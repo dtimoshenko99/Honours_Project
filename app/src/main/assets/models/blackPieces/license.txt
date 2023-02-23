@@ -1,0 +1,11 @@
+Model Information:
+* title:	Gyroscopic Sawdrone
+* source:	https://sketchfab.com/3d-models/gyroscopic-sawdrone-af456d179fd146b0a948b1b3e7eaff5b
+* author:	JackofSpades261 (https://sketchfab.com/JackofSpades261)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Gyroscopic Sawdrone" (https://sketchfab.com/3d-models/gyroscopic-sawdrone-af456d179fd146b0a948b1b3e7eaff5b) by JackofSpades261 (https://sketchfab.com/JackofSpades261) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
