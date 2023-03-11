@@ -1,0 +1,15 @@
+<component name="libraryTable">
+  <library name="Gradle: com.gorisse.thomas.sceneform:sceneform:1.21.0@aar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-3/8a858892d22749fd44837a942b7cbefb/transformed/sceneform-1.21.0/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/8a858892d22749fd44837a942b7cbefb/transformed/sceneform-1.21.0/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/8a858892d22749fd44837a942b7cbefb/transformed/sceneform-1.21.0/AndroidManifest.xml" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.gorisse.thomas.sceneform/sceneform/1.21.0/e25161263a706b3ca341118cf6e781a49668d802/sceneform-1.21.0-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.gorisse.thomas.sceneform/sceneform/1.21.0/cb7e0db5968715f5ec1977104df310f4caf68f18/sceneform-1.21.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
