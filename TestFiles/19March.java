@@ -2,6 +2,8 @@
 // Detaches to temporary node, when a user moves a piece
 // and attaches to a square node when a user sets a piece on a board.
 
+// Although it doesn't work
+// Tried this on 20th of March and the piece stoped appearing on the board...
 package abertay.uad.ac.uk.myapplication;
 import android.net.Uri;
 import android.os.Bundle;
