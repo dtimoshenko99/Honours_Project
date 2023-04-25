@@ -1,3 +1,9 @@
+// This version saves the world positions of each squares
+// When user picks up and places the piece on the board
+// a function checks which square is closer to a position of placement
+//
+// The problem with this one is that no positions are closer
+
 package abertay.uad.ac.uk.myapplication;
 import android.net.Uri;
 import android.os.Bundle;
@@ -5,7 +11,6 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -31,6 +36,8 @@ import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.BaseArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,7 +54,7 @@ public class MainActivity extends AppCompatActivity implements
     private final String TAG = "onTap";
     private ArFragment arFragment;
     private Renderable whitePieces, blackPieces, board;
-    private Anchor anchor, anchor2, tempAnchor;
+    private Anchor anchor, anchor2;
     Node boardNode;
     AnchorNode anchorNode;
 
@@ -58,6 +65,9 @@ public class MainActivity extends AppCompatActivity implements
 
     Vector3 pickUpPosition;
 
+    AnchorNode selectedAnchorNode;
+    TransformableNode transformableNode;
+    boolean nodeSelected = false;
     // For later
     private int playerTurn; // turn: 1- black, 2- white
 
@@ -75,11 +85,9 @@ public class MainActivity extends AppCompatActivity implements
 
     // Vector3 array to hold positions of all squares
     ArrayList<Vector3> squarePositions = new ArrayList<>();
-    ArrayList<Vector3> piecePositions = new ArrayList<>();
-//    Map<Vector3, Vector3> nodePositions = new HashMap<>();
-    Map<Vector3, Vector3> nodePositions = new HashMap<>();
+    ArrayList<Vector3> squareWorldPositions = new ArrayList<>();
+    //    Map<Vector3, Vector3> nodePositions = new HashMap<>();
     // Map to hold Position to Square variables
-    Vector3 anchorOriginalPosition;
     AnchorNode pieceAnchor;
 
     @Override
@@ -126,6 +134,8 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void loadModels() {
+
+        // Load models into renderable variables
         WeakReference<MainActivity> weakActivity = new WeakReference<>(this);
         ModelRenderable.builder()
                 .setSource(this, Uri.parse("models/board/scene.gltf"))
@@ -187,7 +197,10 @@ public class MainActivity extends AppCompatActivity implements
             boardNode.setParent(anchorNode);
             boardNode.setRenderable(this.board);
             boardNode.setLocalScale(new Vector3(0.02f, 0.02f, 0.02f));
-            boardNode.setLocalPosition(new Vector3(0f, -0.02f, 0f));
+            boardNode.setLocalPosition(new Vector3(0f, 0f, 0f));
+            Quaternion oldRotation1 = boardNode.getLocalRotation();
+            Quaternion newRotation1 = Quaternion.axisAngle(new Vector3(0.0f, 1.0f, 0.0f),  90);
+            boardNode.setLocalRotation(Quaternion.multiply(oldRotation1,newRotation1));
 //            Log.d("RedPiece", "populateBoard: Board postions in render: " + boardNode.getLocalPosition());
 
 
@@ -204,49 +217,40 @@ public class MainActivity extends AppCompatActivity implements
 
     // POPULATE BOARD WITH PIECES
     private void populateBoard() {
-        float boardX = boardNode.getLocalPosition().x - 0.41f;
-        float boardY = boardNode.getLocalPosition().y + 0.05f;
-        float boardZ = boardNode.getLocalPosition().z - 0.41f;
+        float worldSquareX = boardNode.getWorldPosition().x - 1f;
+        float worldSquareY = boardNode.getWorldPosition().y;
+        float worldSquareZ = boardNode.getWorldPosition().z - 0.44f;
         float squareSize = 0.118f;
-        int squares = 0;
         boolean isPlaced = false;
 
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
-                squares += 1;
-                float squareX = boardX + col * squareSize;
-                float squareY = boardY;
-                float squareZ = boardZ + row * squareSize;
 
-                squarePositions.add(new Vector3(squareX, squareY, squareZ));
-                // TODO: need to create an array to hold all anchors and their position to then map them to square numbers
+                // Get local position of the squares relative to the board
+                float squareX = worldSquareX + col * squareSize;
+                float squareY = worldSquareY;
+                float squareZ = worldSquareZ + row * squareSize;
 
-                if(!isPlaced){
-                    createPieceNode(squareX, squareY, squareZ, "blackNode");
-                    isPlaced = true;
-                }else{
-                }
+                // Get world position of the squares relative to the board's position
+                squareWorldPositions.add(new Vector3(squareX, squareY, squareZ));
 
-//                int pieceType = boardStart[row][col];
-//
-//                // Create and Populate black nodes
-//                if (pieceType == 1) {
+//                if(!isPlaced){
 //                    createPieceNode(squareX, squareY, squareZ, "blackNode");
+//                    isPlaced = true;
+//                    Log.d(TAG, "populateBoard: Piece is placed on: " + squareX + ", " + squareY + ", " + squareZ);
+//                    Log.d(TAG, "populateBoard: Board is on coordinates: " + boardNode.getWorldPosition());
 //                }
-//                // Create and populate red nodes
-//                else if (pieceType == 2) {
-//                    createPieceNode(squareX, squareY, squareZ, "redPiece");
-//                }
+                createPieceNode(squareX, squareY, squareZ, "blackNode");
+
             }
         }
-        Log.d(TAG, "populateBoard: Square Positions: " + squarePositions.toString());
     }
 
     @Override
     public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
-        Node select = hitTestResult.getNode();
-        select.setLocalPosition(new Vector3(0,0,0));
-        Log.d("onTap", "onTap: The node has been tapped" + motionEvent + hitTestResult + select);
+//        Node select = hitTestResult.getNode();
+//        select.setLocalPosition(new Vector3(0,0,0));
+//        Log.d("onTap", "onTap: The node has been tapped" + motionEvent + hitTestResult + select);
 //        selct.getUp();
     }
 
@@ -254,69 +258,57 @@ public class MainActivity extends AppCompatActivity implements
     public boolean onTouch(HitTestResult hitTestResult, MotionEvent motionEvent) {
         Node node = hitTestResult.getNode();
 
-
         if(node instanceof TransformableNode){
-            TransformableNode transformableNode = (TransformableNode) node;
+            if(!nodeSelected){
+                transformableNode = (TransformableNode) node;
+            }
+
 
             switch (motionEvent.getAction()){
-
                 case MotionEvent.ACTION_DOWN:
-                    // Detatch node from it's AnchorNode, which is in this case the SquareNode
+                    if(!nodeSelected){
+                        // Detatch node from it's AnchorNode, which is in this case the SquareNode
 //                    AnchorNode detach = (AnchorNode) transformableNode.getParent();
 //                    detach.setAnchor(null);
-                    // Debugging purposes
 
-                    AnchorNode pickUpWorld = (AnchorNode) transformableNode.getParent();
-                    pickUpWorldPos = pickUpWorld.getWorldPosition();
-                    pickUpPosition = transformableNode.getLocalPosition();
-                    lastPose = anchor.getPose();
-                    Log.d(TAG, "Position of the Anchor Node on Pickup: " + anchorNode.getWorldPosition());
-                    Log.d(TAG, "Position of the anchor on Pickup" + anchor.getPose());
+                        // Get the pickup position of an AnchorNode, TransformableNode and the Pose of an Anchor
+                        selectedAnchorNode = (AnchorNode) transformableNode.getParent();
+                        pickUpWorldPos = selectedAnchorNode.getWorldPosition();
+                        pickUpPosition = transformableNode.getLocalPosition();
+                        lastPose = anchor.getPose();
+
+                        // Debugging purposes
+                        Log.d(TAG, "Position of the Anchor Node on Pickup: " + anchorNode.getWorldPosition());
+                        Log.d(TAG, "Position of the anchor on Pickup" + anchor.getPose());
+                        nodeSelected = true;
+                    }
                     break;
                 case MotionEvent.ACTION_UP:
-
-//                    Vector3 newPosition = transformableNode.getLocalPosition();
-//                    Pose anchorPose = pieceAnchor.getAnchor().getPose();
-//                    Vector3 worldPosition = new Vector3(anchorPose.tx() + newPosition.x, anchorPose.ty() + newPosition.y, anchorPose.tz() + newPosition.z);
-//                    Vector3 localPosition = pieceAnchor.worldToLocalPoint(worldPosition);
-//                    transformableNode.setLocalPosition(localPosition);
-//                    Vector3 closest = getClosestSquarePosition(localLastKnown);
-//                    Log.d(TAG, "onTouch: "+ findNodeAtPosition(closest));
+                    if(nodeSelected) {
+                        Vector3 newWorldPos = selectedAnchorNode.getWorldPosition();
+//                        Vector3 closestPos = getClosestSquarePosition(newWorldPos);
+//                        selectedAnchorNode.setWorldPosition(closestPos);
+//                        transformableNode.setLocalPosition(new Vector3(0,0,0));
 
 
-                    AnchorNode parent = (AnchorNode) transformableNode.getParent();
-                    if(parent.getWorldPosition().equals(pickUpWorldPos)){
-                        transformableNode.setLocalPosition(new Vector3(0,0.05f,0));
-                        Log.d(TAG, "Position of the AnchorNode Stayed the same:");
-                    }else{
-                        transformableNode.setLocalPosition(transformableNode.getLocalPosition());
-                        Log.d(TAG, "Position of the AnchorNode DID NOT stay the same ");
+                        // Debugging purposes
+                        Log.d(TAG, "Action UP: The node has been UPPED"
+                                + "World: " + transformableNode.getWorldPosition());
+                        nodeSelected = false;
                     }
-//                    tempNode.setWorldPosition(anchorWorldPos);
-
-
-                    // Debugging purposes
-                    Log.d("onTap", "Action UP: The node has been UPPED"
-                            + motionEvent
-                            + hitTestResult
-                            + transformableNode.getName()
-                            + "Local: " + transformableNode.getLocalPosition()
-                            + "World: " + transformableNode.getWorldPosition());
                     break;
 
                 case MotionEvent.ACTION_MOVE:
-                    // To get the last known position of a piece to then assign the values
-                    // to a piece when user releases it
-                    localLastKnown = transformableNode.getLocalPosition();
-                    worldLastKnown = transformableNode.getWorldPosition();
+                    if(nodeSelected) {
+                        // To get the last known position of a piece to then assign the values
+                        // to a piece when user releases it
+                        localLastKnown = transformableNode.getLocalPosition();
+                        worldLastKnown = transformableNode.getWorldPosition();
 
-                    // Debugging purposes
-                    Log.d("onTap", "Action MOVE: The node has been MOVED"
-                            + motionEvent
-                            + hitTestResult
-                            + transformableNode.getName()
-                            + "Local: " + transformableNode.getLocalPosition()
-                            + "World: " + transformableNode.getWorldPosition());
+                        // Debugging purposes
+                        Log.d(TAG, "Action MOVE: The node has been MOVED"
+                                + "World: " + transformableNode.getWorldPosition());
+                    }
                     break;
             }
             return true;
@@ -325,44 +317,39 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
-    private Vector3 getClosestSquarePosition(Vector3 pieceLocalPosition) {
-        double threshold = 0.15;
-        //  squareLocalPositionsMap
-        Vector3 squareLocalPos = null;
-        double distance;
-        for (int i = 0; i < squarePositions.size(); i++){
-            squareLocalPos = squarePositions.get(i);
-
-
-            // Get distance between square and a piece position
-            distance = Math.sqrt(Math.pow(pieceLocalPosition.x - squareLocalPos.x, 2)
-                    + Math.pow(pieceLocalPosition.y - squareLocalPos.y, 2)
-                    + Math.pow(pieceLocalPosition.z - squareLocalPos.z, 2));
-
-            if (distance < threshold) {
-                Log.d("onTap", "distance is less: " + squareLocalPos + "Local: " + squareLocalPos);
-                // Should check which space
-                return squareLocalPos;
-
-            }
-
-        }
-        return pieceLocalPosition;
-    }
-
-    public AnchorNode findNodeAtPosition(Vector3 position) {
-        for (Node node : arFragment.getArSceneView().getScene().getChildren()) {
-            if (node.getWorldPosition().equals(position)) {
-                Log.d(TAG, "findNodeAtPosition: " + node);
-                return (AnchorNode) node;
-            }
-        }
-        return null;
-    }
+//    private Vector3 getClosestSquarePosition(Vector3 pieceWorldPosition) {
+//        double threshold = 0.15;
+//        //  squareLocalPositionsMap
+//        Vector3 squareWorldPosition = null;
+//        double distance;
+//
+//        Log.d(TAG, "getClosestSquarePosition: Starting interation of the closest square");
+//        for (int i = 0; i < squareWorldPositions.size(); i++){
+//            squareWorldPosition = squareWorldPositions.get(i);
+//
+//            Log.d(TAG, "getClosestSquarePosition: stored position: " + squareWorldPosition);
+//            Log.d(TAG, "getClosestSquarePosition: piece position: " + pieceWorldPosition);
+//
+//            // Get distance between square and a piece position
+//            distance = Math.sqrt(Math.pow(pieceWorldPosition.x - squareWorldPosition.x, 2)
+//                    + Math.pow(pieceWorldPosition.y - squareWorldPosition.y, 2)
+//                    + Math.pow(pieceWorldPosition.z - squareWorldPosition.z, 2));
+//
+//            if (distance < threshold) {
+//                Log.d(TAG, "distance is less: " + pieceWorldPosition + "Local: " + pieceWorldPosition);
+//                // Should check which space
+//                return pieceWorldPosition;
+//
+//            }
+//
+//        }
+//        return worldLastKnown;
+//    }
 
 
     private void createPieceNode(float x, float y, float z, String node) {
         TransformableNode piece = new TransformableNode(arFragment.getTransformationSystem());
+        pieceAnchor.setWorldPosition(new Vector3(x, y, z));
         piece.setParent(pieceAnchor);
         piece.setRenderable(blackPieces);
         piece.setSelectable(true);
@@ -372,11 +359,14 @@ public class MainActivity extends AppCompatActivity implements
         piece.setLocalRotation(Quaternion.multiply(oldRotation1,newRotation1));
         piece.getScaleController().setMinScale(0.002f);
         piece.getScaleController().setMaxScale(0.003f);
-        piece.setLocalPosition(new Vector3(x, y, z));
+        piece.setWorldPosition(new Vector3(x, y, z));
+//        piece.setLocalPosition(new Vector3(0f, 0.05f, 0f));
         piece.setName(node);
         piece.setOnTapListener(this);
         piece.setOnTouchListener(this);
         Log.d(TAG, "createRedNodes: Black NODE Local " + piece.getLocalPosition());
+        Log.d(TAG, "createRedNodes: Black NODE Local " + piece.getWorldPosition());
+
     }
 
 }

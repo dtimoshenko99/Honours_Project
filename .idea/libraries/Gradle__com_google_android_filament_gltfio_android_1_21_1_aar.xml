@@ -1,9 +1,12 @@
 <component name="libraryTable">
   <library name="Gradle: com.google.android.filament:gltfio-android:1.21.1@aar">
     <CLASSES>
-      <root url="jar://$USER_HOME$/.gradle/caches/transforms-3/859bf753417c1cdf933cd5d8df8b3512/transformed/gltfio-android-1.21.1/jars/classes.jar!/" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-3/859bf753417c1cdf933cd5d8df8b3512/transformed/gltfio-android-1.21.1/res" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/859bf753417c1cdf933cd5d8df8b3512/transformed/gltfio-android-1.21.1/AndroidManifest.xml" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/7d04554eea8d2f0613daf3f734105e2b/transformed/gltfio-android-1.21.1/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/2c81a1360f4ff3b98e249aec146ef0eb/transformed/gltfio-android-1.21.1/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/f9da3a6b0619a0c5f9d4459edebe8fa1/transformed/jetified-gltfio-android-1.21.1/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/f9da3a6b0619a0c5f9d4459edebe8fa1/transformed/jetified-gltfio-android-1.21.1/AndroidManifest.xml" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-3/f9da3a6b0619a0c5f9d4459edebe8fa1/transformed/jetified-gltfio-android-1.21.1/jars/classes.jar!/" />
     </CLASSES>
     <JAVADOC>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.android.filament/gltfio-android/1.21.1/440cc4380e9032d41a63a85d17e59bcfb7951928/gltfio-android-1.21.1-javadoc.jar!/" />

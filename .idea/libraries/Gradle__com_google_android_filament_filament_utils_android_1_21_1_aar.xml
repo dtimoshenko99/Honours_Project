@@ -1,9 +1,12 @@
 <component name="libraryTable">
   <library name="Gradle: com.google.android.filament:filament-utils-android:1.21.1@aar">
     <CLASSES>
-      <root url="jar://$USER_HOME$/.gradle/caches/transforms-3/d244e1683c835ee5796a10756ae87096/transformed/filament-utils-android-1.21.1/jars/classes.jar!/" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-3/d244e1683c835ee5796a10756ae87096/transformed/filament-utils-android-1.21.1/res" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/d244e1683c835ee5796a10756ae87096/transformed/filament-utils-android-1.21.1/AndroidManifest.xml" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/61aed1a7b4af9d8ec876fdb78aa351dd/transformed/filament-utils-android-1.21.1/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/3d8bf6089d51408d6e6e38bbbfa6013d/transformed/filament-utils-android-1.21.1/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/c7b683ab1fc32bce1a53ff30406c9a18/transformed/jetified-filament-utils-android-1.21.1/res" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-3/c7b683ab1fc32bce1a53ff30406c9a18/transformed/jetified-filament-utils-android-1.21.1/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-3/c7b683ab1fc32bce1a53ff30406c9a18/transformed/jetified-filament-utils-android-1.21.1/AndroidManifest.xml" />
     </CLASSES>
     <JAVADOC>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.android.filament/filament-utils-android/1.21.1/994bd2962a00db37d71230b53aefdbc3e1bcfc02/filament-utils-android-1.21.1-javadoc.jar!/" />

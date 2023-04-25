@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "812866830100",
+    "firebase_url": "https://diploma-fff2b-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "diploma-fff2b",
+    "storage_bucket": "diploma-fff2b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:812866830100:android:13acc64b21b0047b77cc01",
+        "android_client_info": {
+          "package_name": "abertay.uad.ac.uk.myapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "812866830100-i3frvc9100n3hlm30000tsn57nrt4mal.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBn0eFtUSHcjw28XlRFfJf9gDcspcgejbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "812866830100-i3frvc9100n3hlm30000tsn57nrt4mal.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
