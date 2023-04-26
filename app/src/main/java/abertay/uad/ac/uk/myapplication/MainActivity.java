@@ -1,14 +1,7 @@
-// This version is implementing the next hierarchy:
-// Anchor - AnchorNode - BoardAnchor + TransNodes (each for a piece)
-// This version keeps track of the position of all squares
-
-// The problem: When attaching to a boardnode on piece down - the piece jumps
-// into the middle of the board - even if setting the local position of it
-// Another problem is that when detaching from a board node the TempAnchor node
-// is not set to board's 0,0,0 and moving alongside the piece - hence there is
-// no way to get the right local position to determine which square the piece is set to
-
 package abertay.uad.ac.uk.myapplication;
+
+
+
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,6 +9,7 @@ import android.view.MotionEvent;
 import android.widget.Toast;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -44,9 +38,7 @@ import com.google.ar.sceneform.ux.TransformableNode;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements
         FragmentOnAttachListener,
@@ -56,22 +48,23 @@ public class MainActivity extends AppCompatActivity implements
         Node.OnTapListener,
         Node.OnTouchListener{
 
-    private final String RED_NODE = "redPiece";
-    private final String BLACK_NODE = "blackPiece";
     private final String  TAG = "onTap";
 
-
+    private AnchorNode initialAnchorNode;
     private ArFragment arFragment;
-    private Renderable whitePieces, blackPieces, board;
+    private Renderable redPiece, blackPieces, board;
     private Anchor anchor, anchor2;
     Node boardNode;
     AnchorNode anchorNode;
 
     AnchorNode tempNode;
 
+
     Vector3 localLastKnown;
     Vector3 worldLastKnown;
     Vector3 pickUpPosition;
+
+    GameTurnManager turnManager = new GameTurnManager();
 
     private boolean nodeSelected = false;
     private TransformableNode selectedNode;
@@ -91,12 +84,9 @@ public class MainActivity extends AppCompatActivity implements
             {2, 0, 2, 0, 2, 0, 2, 0}
     }; // 1 - black pieces, 2 - red
 
-    private int occupiedSquare;
     // Map to hold Position to Square variables
-    Map<Integer, Vector3> squareLocalPositionsMap = new HashMap<>();
     List<Vector3> squareWorldPositions = new ArrayList<>();
 
-    Map<Vector3, Integer> isOcupied = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -214,6 +204,8 @@ public class MainActivity extends AppCompatActivity implements
             // Populate the board with pieces
             populateBoard();
 
+            //Decide who plays first and update Node's selectivity
+            turnManager.switchTurnAndUpdateSelectableNodes(arFragment);
         } else {
             Toast.makeText(this, "The board is already placed, you can change the position by moving the board", Toast.LENGTH_LONG).show();
         }
@@ -243,10 +235,12 @@ public class MainActivity extends AppCompatActivity implements
                 int pieceType = boardArray[row][col];
                 // Create and Populate black nodes
                 if (pieceType == 1) {
+                    String BLACK_NODE = "blackPiece";
                     createPieceNode(squareX, squareY, squareZ, BLACK_NODE);
                 }
                 // Create and populate red nodes
                 else if (pieceType == 2) {
+                    String RED_NODE = "redPiece";
                     createPieceNode(squareX, squareY, squareZ, RED_NODE);
                 }
             }
@@ -254,6 +248,8 @@ public class MainActivity extends AppCompatActivity implements
 
         }
     }
+
+
 
     private int[] getRowColFromWorldPosition(Vector3 worldPosition, List<Vector3> squareWorldPositions, int numRows, int numCols) {
         int closestRow = -1;
@@ -284,43 +280,55 @@ public class MainActivity extends AppCompatActivity implements
         return (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
+    private boolean isSquareOccupied(int row, int col) {
+        Log.d(TAG, "isSquareOccupied: " + boardArray[row][col]);
+        Log.d(TAG, "updateBoardStartArray: " + Arrays.deepToString(boardArray));
+        if(boardArray[row][col] == 0){
+            return false;
+        }else{
+            return true;
+        }
+    }
 
     @Override
     public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
-//        Node selct = hitTestResult.getNode();
-//
-//        Log.d("onTap", "onTap: The node has been tapped" + motionEvent + hitTestResult + selct);
-//        selct.getUp();
+
     }
 
     @Override
     public boolean onTouch(HitTestResult hitTestResult, MotionEvent motionEvent) {
         Node node = hitTestResult.getNode();
+        if (node instanceof TransformableNode) {
+            String nodeName = node.getName();
+            boolean moveAllowed = turnManager.isMoveAllowed(nodeName);
 
-        if(node instanceof TransformableNode){
-            if(!nodeSelected) {
-                selectedNode = (TransformableNode) node;
-            }
+            if (moveAllowed) {
+                if (!nodeSelected) {
+                    selectedNode = (TransformableNode) node;
+                    nodeSelected = true;
+                }
 
-            switch (motionEvent.getAction()){
-                case MotionEvent.ACTION_DOWN:
-                    if(!nodeSelected){
+                switch (motionEvent.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
                         pickUpPosition = new Vector3(selectedNode.getWorldPosition());
-                        nodeSelected = true;
-                    }
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    if(nodeSelected){
-                    }
-
-                    break;
-                case MotionEvent.ACTION_UP:
-                    if(nodeSelected){
+                        initialAnchorNode = (AnchorNode) selectedNode.getParent();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        isInsideBoard(selectedNode.getWorldPosition());
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        // TODO: Need to implement here a check if the position is outside the board with the function above - return to pickup without further operations
+//                        isInsideBoard(selectedNode.getWorldPosition());
                         pieceDropped(selectedNode);
+                        // Need check logic here
+                        // TODO: need to implement a "checkersGame" class, where to check whether a piece has more turn
                         nodeSelected = false;
-                    }
-                    break;
+                        break;
+                }
+            } else {
+                nodeSelected = false;
             }
+
             return true;
         }
         return false;
@@ -328,25 +336,42 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void pieceDropped(TransformableNode node){
-        Log.d(TAG, "--------------------------------------------");
         worldLastKnown = node.getWorldPosition();
         Vector3 worldSquarePos = getClosestSquarePosition(worldLastKnown);
-        int[] colandrow = getRowColFromWorldPosition(worldLastKnown, squareWorldPositions, 8,8);
-        Log.d(TAG, "onTouch: COLANDROW" + colandrow[0] + ", " + colandrow[1]);
-        node.setWorldPosition(worldSquarePos);
-        Log.d(TAG, "pieceDropped: " + "Local: " + node.getLocalPosition() + "World: " + worldLastKnown);
-        Log.d(TAG, "--------------------------------------------");
-        int[] pickupColandRow = getRowColFromWorldPosition(pickUpPosition, squareWorldPositions, 8,8);
-        updateBoardStartArray(pickupColandRow[1], pickupColandRow[0], colandrow[1], colandrow[0]);
+        Vector3 pickUpSquarePos = getClosestSquarePosition(pickUpPosition);
+        int[] colAndRow = getRowColFromWorldPosition(worldLastKnown, squareWorldPositions, 8,8);
+        Log.d(TAG, "onTouch: ROW AND COL" + colAndRow[0] + ", " + colAndRow[1]);
+
+        int[] pickupRowAndCol = getRowColFromWorldPosition(pickUpPosition, squareWorldPositions, 8,8);
+        // Check if the move was valid
+        boolean isValid = isValidMove(pickupRowAndCol[1], pickupRowAndCol[0], colAndRow[1], colAndRow[0]);
+
+        if(isValid){
+            selectedNode.setParent(initialAnchorNode);
+            selectedNode.setLocalPosition(new Vector3(0,0,0));
+        }else{
+            Log.d(TAG, "pieceDropped: isValid?; " + isValid);
+            node.setWorldPosition(worldSquarePos);
+            updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0], colAndRow[1], colAndRow[0]);
+
+            // Switches the turn and updates the corresponding node's setSelectable value
+            turnManager.switchTurnAndUpdateSelectableNodes(arFragment);
+            initialAnchorNode = null;
+        }
+
+
+
     }
 
-    private void updateBoardStartArray(int initialRow, int initialCol, int destRow, int destCol) {
+    private void updateBoardStartArray(int initialCol, int initialRow, int destCol, int destRow) {
+        // Get the piece value from the initial square
+        int pieceValue = boardArray[initialRow][initialCol];
+        // Set the initial square to 0 (unoccupied)
         boardArray[initialRow][initialCol] = 0;
 
-        // Update the destination square with the value representing the moved piece
-        int pieceValue = (destRow % 2 == destCol % 2) ? 1 : 2;
+        // Update the destination square with the moved piece value
         boardArray[destRow][destCol] = pieceValue;
-        Log.d(TAG, "updateBoardStartArray: " + Arrays.toString(boardArray));
+
     }
 
     private Vector3 getClosestSquarePosition(Vector3 pieceWorldPosition){
@@ -373,11 +398,72 @@ public class MainActivity extends AppCompatActivity implements
         return pickUpPosition;
     }
 
+    private boolean isValidMove(int initialCol, int initialRow, int destCol, int destRow) {
+        int rowDiff = Math.abs(destRow - initialRow);
+        int colDiff = Math.abs(destCol - initialCol);
+
+        Log.d(TAG, "isValidMove: Initialcol+row: " + initialCol + "  " + initialRow);
+        Log.d(TAG, "isValidMove: destCol and Row " + destCol + "  " + destRow);
+        Log.d(TAG, "isValidMove: rowDiff" + rowDiff);
+        Log.d(TAG, "isValidMove: colDiff" + colDiff);
+
+        // Check if the move is diagonal
+        if (rowDiff != colDiff) {
+            Log.d(TAG, "isValidMove: Move is not diagonal");
+            return false;
+        }
+
+        // Check if the move length is valid (1 or 2 squares)
+        if (rowDiff > 2 || colDiff > 2) {
+            Log.d(TAG, "isValidMove: move is more than 1 or 2 squares in length");
+            return false;
+        }
+
+        // TODO: the following functionality is not working as intended - need to make it work
+        int currentPlayerPiece = boardArray[initialRow][initialCol];
+        int opponentPiece = (currentPlayerPiece == 1) ? 2 : 1;
+
+        // Check if the destination square is occupied
+        if (isSquareOccupied(destRow, destCol)) {
+            Log.d(TAG, "isValidMove: Space is OCCUPIED: " + destRow + "  " + destCol);
+            // If the move is 1 square long, it's invalid because the destination is occupied
+            if (rowDiff == 1 && colDiff == 1) {
+                Log.d(TAG, "isValidMove: the move is invalid, as the space is occupied");
+                return false;
+            }
+            // If the move is 2 squares long, it's invalid because the destination is occupied
+            else if (rowDiff == 2 && colDiff == 2) {
+                Log.d(TAG, "isValidMove: the move is invalid, as the space is occupied (2 squares)");
+                return false;
+            }
+        }
+
+        // If the move is 2 squares long, check if the player can capture the piece
+        if (rowDiff == 2 && colDiff == 2) {
+            int middleRow = (initialRow + destRow) / 2;
+            int middleCol = (initialCol + destCol) / 2;
+            
+            // Check if the piece in the middle square belongs to the opponent
+            if (boardArray[middleRow][middleCol] != opponentPiece) {
+                Log.d(TAG, "isValidMove:  If the move is 2 squares long, check if the player can capture the piece");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
     private void createPieceNode(float x, float y, float z, String node ) {
-        tempNode = new AnchorNode(anchor2);
-        tempNode.setParent(arFragment.getArSceneView().getScene());
+        Pose pose = Pose.makeTranslation(x, y, z);
+        Anchor pieceAnchor = arFragment.getArSceneView().getSession().createAnchor(pose);
+
+
+        AnchorNode pieceAnchorNode = new AnchorNode(pieceAnchor);
+        pieceAnchorNode.setParent(arFragment.getArSceneView().getScene());
+
         TransformableNode piece = new TransformableNode(arFragment.getTransformationSystem());
-        piece.setParent(tempNode);
+        piece.setParent(pieceAnchorNode);
 
         piece.setRenderable(blackPieces);
         piece.setSelectable(true);
@@ -392,10 +478,28 @@ public class MainActivity extends AppCompatActivity implements
         piece.setName(node);
         piece.setOnTapListener(this);
         piece.setOnTouchListener(this);
-        tempNode.setWorldPosition(new Vector3(x, y, z));
-        Log.d(TAG, "createRedNodes: Black NODE WORLD + LOCAL: " + piece.getWorldPosition() + ", " + piece.getLocalPosition());
-
+        pieceAnchorNode.setWorldPosition(new Vector3(x, y, z));
     }
 
+    private boolean isInsideBoard(Vector3 worldPosition) {
+        Vector3 boardCenter = boardNode.getWorldPosition(); // Replace with the actual center world position of your board
+        float boardWidth = 1.0f; // Replace with the actual width of your board
+        float boardLength = 1.0f; // Replace with the actual length of your board
+
+        float halfWidth = boardWidth / 2;
+        float halfLength = boardLength / 2;
+
+        float minX = boardCenter.x - halfWidth;
+        float maxX = boardCenter.x + halfWidth;
+        float minZ = boardCenter.z - halfLength;
+        float maxZ = boardCenter.z + halfLength;
+        
+        if((worldPosition.x >= minX && worldPosition.x <= maxX) && (worldPosition.z >= minZ && worldPosition.z <= maxZ)){
+            Log.d(TAG, "isInsideBoard: Inside the board");
+        }else{
+            Log.d(TAG, "isInsideBoard: outside the board");
+        }
+        return (worldPosition.x >= minX && worldPosition.x <= maxX) && (worldPosition.z >= minZ && worldPosition.z <= maxZ);
+    }
 
 }
