@@ -1,7 +1,4 @@
 package abertay.uad.ac.uk.myapplication;
-
-
-
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -40,7 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements
+public class SinglePlayerActivity extends AppCompatActivity implements
         FragmentOnAttachListener,
         BaseArFragment.OnTapArPlaneListener,
         BaseArFragment.OnSessionConfigurationListener,
@@ -92,7 +89,7 @@ public class MainActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_single_player);
         getSupportFragmentManager().addFragmentOnAttachListener(this);
 
         if (savedInstanceState == null) {
@@ -132,14 +129,14 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void loadModels() {
-        WeakReference<MainActivity> weakActivity = new WeakReference<>(this);
+        WeakReference<SinglePlayerActivity> weakActivity = new WeakReference<>(this);
         ModelRenderable.builder()
                 .setSource(this, Uri.parse("models/board/scene.gltf"))
                 .setIsFilamentGltf(true)
                 .setAsyncLoadEnabled(true)
                 .build()
                 .thenAccept(model -> {
-                    MainActivity activity = weakActivity.get();
+                    SinglePlayerActivity activity = weakActivity.get();
                     if (activity != null) {
                         activity.board = model;
                     }
@@ -149,14 +146,14 @@ public class MainActivity extends AppCompatActivity implements
                             this, "Unable to load model", Toast.LENGTH_LONG).show();
                     return null;
                 });
-        WeakReference<MainActivity> weakActivity1 = new WeakReference<>(this);
+        WeakReference<SinglePlayerActivity> weakActivity1 = new WeakReference<>(this);
         ModelRenderable.builder()
                 .setSource(this, Uri.parse("models/pieces/scene.gltf"))
                 .setIsFilamentGltf(true)
                 .setAsyncLoadEnabled(true)
                 .build()
                 .thenAccept(piecesModel -> {
-                    MainActivity activity = weakActivity1.get();
+                    SinglePlayerActivity activity = weakActivity1.get();
                     if (activity != null) {
                         activity.blackPieces = piecesModel;
                     }
