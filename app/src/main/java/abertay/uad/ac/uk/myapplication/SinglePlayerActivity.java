@@ -1,8 +1,11 @@
 package abertay.uad.ac.uk.myapplication;
+import static abertay.uad.ac.uk.myapplication.GameTurnManager.Player.RED;
+
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -203,6 +206,7 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
             //Decide who plays first and update Node's selectivity
             turnManager.switchTurnAndUpdateSelectableNodes(arFragment);
+            updateTurnIndicator();
         } else {
             Toast.makeText(this, "The board is already placed, you can change the position by moving the board", Toast.LENGTH_LONG).show();
         }
@@ -317,6 +321,7 @@ public class SinglePlayerActivity extends AppCompatActivity implements
                         // TODO: Need to implement here a check if the position is outside the board with the function above - return to pickup without further operations
 //                        isInsideBoard(selectedNode.getWorldPosition());
                         pieceDropped(selectedNode);
+
                         // Need check logic here
                         // TODO: need to implement a "checkersGame" class, where to check whether a piece has more turn
                         nodeSelected = false;
@@ -330,6 +335,12 @@ public class SinglePlayerActivity extends AppCompatActivity implements
         }
         return false;
 
+    }
+
+    private void updateTurnIndicator() {
+        TextView turnIndicator = findViewById(R.id.turnIndicator);
+        String currentPlayerName = turnManager.currentPlayer == RED ? "Red" : "Black";
+        turnIndicator.setText("Turn: " + currentPlayerName);
     }
 
     private void pieceDropped(TransformableNode node){
@@ -353,6 +364,8 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
             // Switches the turn and updates the corresponding node's setSelectable value
             turnManager.switchTurnAndUpdateSelectableNodes(arFragment);
+            // Update textview with the text of whose turn it is
+            updateTurnIndicator();
             initialAnchorNode = null;
         }
 

@@ -94,4 +94,5 @@ public class GameTurnManager {
         String nodeName = (currentPlayer == Player.RED) ? "redPiece" : "blackPiece";
         updateSelectableNodes(arFragment, nodeName);
     }
+
 }
