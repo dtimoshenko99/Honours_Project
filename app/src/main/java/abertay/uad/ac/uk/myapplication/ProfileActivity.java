@@ -39,7 +39,7 @@ public class ProfileActivity extends AppCompatActivity {
     FirebaseUser user;
     FirebaseFirestore firestoreDB;
     Button signOut, deleteUser, updateUser;
-    String username, uid, usernameInput, email;
+    String usernamePreferences, uid, usernameInput, emailPreferences;
 
     EditText input;
     ImageView backButton;
@@ -53,8 +53,8 @@ public class ProfileActivity extends AppCompatActivity {
         shared = getSharedPreferences("details", Context.MODE_PRIVATE);
         editor = shared.edit();
 
-        username = shared.getString("username", "username");
-        email = shared.getString("email", "email");
+        usernamePreferences = shared.getString("username", "username");
+        emailPreferences = shared.getString("email", "email");
 
         auth = FirebaseAuth.getInstance();
         firestoreDB = FirebaseFirestore.getInstance();
@@ -65,7 +65,7 @@ public class ProfileActivity extends AppCompatActivity {
         signOut = findViewById(R.id.signOutBttn);
         backButton = findViewById(R.id.arrowBackProfile);
         input = findViewById(R.id.inputUsername);
-        input.setText(username);
+        input.setText(usernamePreferences);
         usernameInput = input.getText().toString();
 
         signOut.setOnClickListener(v -> signOut());
@@ -82,14 +82,14 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void deleteUserandGames() {
-        firestoreDB.collection("users").whereEqualTo("username", username).get()
+        firestoreDB.collection("users").whereEqualTo("username", usernamePreferences).get()
                 .addOnCompleteListener(task -> {
                     if(task.isSuccessful()){
                         QuerySnapshot doc = task.getResult();
                         String id = doc.getDocuments().get(0).getId();
                         firestoreDB.collection("users").document(id).delete()
                                 .addOnSuccessListener(unused -> firestoreDB.collection("games").whereEqualTo("email",
-                                        email)
+                                        emailPreferences)
                                         .get().addOnSuccessListener(queryDocumentSnapshots -> {
                                             if(!queryDocumentSnapshots.isEmpty()){
                                                 WriteBatch batch = firestoreDB.batch();
@@ -122,7 +122,7 @@ public class ProfileActivity extends AppCompatActivity {
 
             map.put("username", input.getText().toString());
 
-            firestoreDB.collection("users").whereEqualTo("username", username).get().addOnCompleteListener(idTask ->
+            firestoreDB.collection("users").whereEqualTo("email", emailPreferences).get().addOnCompleteListener(idTask ->
             {
                QuerySnapshot snap = idTask.getResult();
                uid = snap.getDocuments().get(0).getId();
@@ -143,6 +143,10 @@ public class ProfileActivity extends AppCompatActivity {
                 .setPositiveButton(android.R.string.yes, (dialog, which) -> {
                     auth.signOut();
                     LoginManager.getInstance().logOut();
+                    editor.putString("username", "clear").apply();
+                    editor.putString("email", "clear").apply();
+                    editor.clear();
+                    editor.apply();
                     startActivity(new Intent(ProfileActivity.this, LoginActivity.class));
                 }).setNegativeButton(android.R.string.no, null)
                 .show();

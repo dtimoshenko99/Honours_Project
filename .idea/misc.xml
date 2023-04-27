@@ -6,10 +6,10 @@
         <entry key="app/src/main/res/drawable-v24/ic_arrow_black.xml" value="0.1" />
         <entry key="app/src/main/res/layout/activity_face_book.xml" value="0.36594202898550726" />
         <entry key="app/src/main/res/layout/activity_facebook_username.xml" value="0.25" />
-        <entry key="app/src/main/res/layout/activity_login.xml" value="0.5" />
+        <entry key="app/src/main/res/layout/activity_login.xml" value="0.25" />
         <entry key="app/src/main/res/layout/activity_login2.xml" value="0.33" />
         <entry key="app/src/main/res/layout/activity_main.xml" value="0.33" />
-        <entry key="app/src/main/res/layout/activity_main_menu.xml" value="0.1" />
+        <entry key="app/src/main/res/layout/activity_main_menu.xml" value="0.25" />
         <entry key="app/src/main/res/layout/activity_multi_player.xml" value="0.2942708333333333" />
         <entry key="app/src/main/res/layout/activity_profile.xml" value="0.17905578613281253" />
         <entry key="app/src/main/res/layout/activity_sign_up.xml" value="0.2713541666666667" />

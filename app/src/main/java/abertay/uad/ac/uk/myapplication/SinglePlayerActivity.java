@@ -1,10 +1,12 @@
 package abertay.uad.ac.uk.myapplication;
 import static abertay.uad.ac.uk.myapplication.GameTurnManager.Player.RED;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -87,6 +89,7 @@ public class SinglePlayerActivity extends AppCompatActivity implements
     // Map to hold Position to Square variables
     List<Vector3> squareWorldPositions = new ArrayList<>();
 
+    Button login;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,6 +97,12 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
         setContentView(R.layout.activity_single_player);
         getSupportFragmentManager().addFragmentOnAttachListener(this);
+
+        login = findViewById(R.id.button);
+
+        login.setOnClickListener(v -> {
+            startActivity(new Intent(this, LoginActivity.class));
+        });
 
         if (savedInstanceState == null) {
             if (Sceneform.isSupported(this)) {
@@ -319,6 +328,7 @@ public class SinglePlayerActivity extends AppCompatActivity implements
                         break;
                     case MotionEvent.ACTION_UP:
                         // TODO: Need to implement here a check if the position is outside the board with the function above - return to pickup without further operations
+                        // The function is ready, jsut need to push back the piece if it is out of bounds
 //                        isInsideBoard(selectedNode.getWorldPosition());
                         pieceDropped(selectedNode);
 

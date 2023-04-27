@@ -4,10 +4,13 @@ import static android.widget.Toast.LENGTH_SHORT;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -17,7 +20,13 @@ import android.widget.Toast;
 import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.FacebookSdk;
+import com.facebook.internal.Utility;
+import com.facebook.internal.Validate;
 import com.facebook.login.Login;
+import com.facebook.login.LoginManager;
+import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.filament.utils.Utils;
 import com.google.firebase.auth.AuthCredential;
@@ -29,6 +38,8 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public class LoginActivity extends AppCompatActivity {
@@ -41,9 +52,9 @@ public class LoginActivity extends AppCompatActivity {
     TextView createButton;
 
     private FirebaseAuth auth;
-    Button emailLogin;
+    LoginButton faceBookLogin;
     CallbackManager callbackManager;
-    Button loginButton;
+    Button loginButton, googlePlayLogin;
     FirebaseFirestore firestoreDB;
     FirebaseUser user;
     String patt = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+";
@@ -52,21 +63,26 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
-
         auth = FirebaseAuth.getInstance();
         user = auth.getCurrentUser();
         shared = getSharedPreferences("details", Context.MODE_PRIVATE);
         editor = shared.edit();
         checkUser();
+        setContentView(R.layout.activity_login);
 
         loginButton = findViewById(R.id.loginButton);
+
         callbackManager = CallbackManager.Factory.create();
+
+        faceBookLogin = findViewById(R.id.fbButton);
+        faceBookLogin.setReadPermissions(Arrays.asList("public_profile", "email"));
+
+        googlePlayLogin = findViewById(R.id.gpButton);
 
         firestoreDB = FirebaseFirestore.getInstance();
 
-        email = findViewById(R.id.emailField);
-        password = findViewById(R.id.passwordField);
+        email = findViewById(R.id.textEmail);
+        password = findViewById(R.id.textPassword);
         createButton = findViewById(R.id.createAccount);
 
         createButton.setOnClickListener(view -> {
@@ -74,6 +90,25 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         loginButton.setOnClickListener(view -> signIn());
+
+        faceBookLogin.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
+            @Override
+            public void onSuccess(LoginResult loginResult) {
+                facebookLoginAccessToken(loginResult.getAccessToken());
+//                progress.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onCancel() {
+
+//                progress.setVisibility(View.INVISIBLE);
+            }
+            @Override
+            public void onError(@NonNull FacebookException error) {
+//                progress.setVisibility(View.INVISIBLE);
+                Toast.makeText(LoginActivity.this, "Error occurred, try again!", LENGTH_SHORT).show();
+            }
+        });
 
     }
 
@@ -88,7 +123,7 @@ public class LoginActivity extends AppCompatActivity {
                             editor.putString("username", username).apply();
                             startActivity(new Intent(LoginActivity.this, MainMenuActivity.class));
                         }
-                    }).addOnFailureListener(e -> Toast.makeText(this, "" + e.getLocalizedMessage(), LENGTH_SHORT).show());
+                    }).addOnFailureListener(e -> Toast.makeText(this, "CheckUser()" + e.getLocalizedMessage(), LENGTH_SHORT).show());
 
         } else if (user == null) {
             editor.putString("username", "notset");
@@ -104,8 +139,6 @@ public class LoginActivity extends AppCompatActivity {
             email.setError("Please enter correct email.");
         } else if (passwordText.isEmpty()) {
             password.setError("Please enter your password.");
-        } else if (!passwordText.matches(passPatt)) {
-            password.setError("Password needs to have: at least 1 number, 1 lower case, 1 uppercase, one of the following characters: ! @ # $ ( ), 8-20 characters ");
         } else {
             // ADD a progress here
 //            progress.setVisibility(View.VISIBLE);
@@ -121,7 +154,7 @@ public class LoginActivity extends AppCompatActivity {
 //                progress.setVisibility(View.INVISIBLE);
                 Toast.makeText(this, "Authentication failed.",
                         LENGTH_SHORT).show();
-                Toast.makeText(this, "" + e.getLocalizedMessage(), LENGTH_SHORT).show();
+                Toast.makeText(this, "SignIn()" + e.getLocalizedMessage(), LENGTH_SHORT).show();
             });
         }
     }
@@ -146,7 +179,7 @@ public class LoginActivity extends AppCompatActivity {
                                 i.putExtra("uID", id);
                                 i.putExtra("userEmail", email);
                                 i.putExtra("name", name);
-                                editor.putString("hui", email).apply();
+                                editor.putString("email", email).apply();
                                 startActivity(i);
                             }else if(task1.isSuccessful() && !task1.getResult().isEmpty()){
                                 QuerySnapshot doc = task1.getResult();

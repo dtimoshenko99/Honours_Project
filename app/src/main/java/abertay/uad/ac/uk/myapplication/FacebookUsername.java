@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -48,11 +49,12 @@ public class FacebookUsername extends AppCompatActivity {
         
         usernameField = findViewById(R.id.usernameFieldRegister);
         usernameRegister = findViewById(R.id.registerUsername);
-        
+        nameWelcome = findViewById(R.id.nameForWelcome);
         getIntentFunction();
 
         // Add code here
         nameWelcome.setText("Welcome, "+name);
+        Log.d("onTap", "onCreate: " + email + name + id);
 
         usernameRegister.setOnClickListener(v -> {
 //            progress.setVisibility(View.VISIBLE);
@@ -84,6 +86,7 @@ public class FacebookUsername extends AppCompatActivity {
         user.put("userID", id);
         user.put("email", email);
         firestoreDB.collection("users").document(id).set(user).addOnSuccessListener(unused -> {
+            editor.putString("username", "notset").apply();
             editor.putString("username", usernameField.getText().toString()).apply();
             startActivity(new Intent(this,  MainMenuActivity.class));
 //            progress.setVisibility(View.INVISIBLE);
