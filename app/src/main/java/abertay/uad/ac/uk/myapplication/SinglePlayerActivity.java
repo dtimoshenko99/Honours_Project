@@ -55,14 +55,10 @@ public class SinglePlayerActivity extends AppCompatActivity implements
     private AnchorNode initialAnchorNode;
     private ArFragment arFragment;
     private Renderable redPiece, blackPieces, board;
-    private Anchor anchor, anchor2;
+    private Anchor anchor;
     Node boardNode;
     AnchorNode anchorNode;
 
-    AnchorNode tempNode;
-
-
-    Vector3 localLastKnown;
     Vector3 worldLastKnown;
     Vector3 pickUpPosition;
 
@@ -70,9 +66,6 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
     private boolean nodeSelected = false;
     private TransformableNode selectedNode;
-    // For later
-    private int playerTurn; // turn: 1- black, 2- white
-
     // Starting position to the board
 
     private final int[][] boardArray = {
@@ -89,20 +82,12 @@ public class SinglePlayerActivity extends AppCompatActivity implements
     // Map to hold Position to Square variables
     List<Vector3> squareWorldPositions = new ArrayList<>();
 
-    Button login;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_single_player);
         getSupportFragmentManager().addFragmentOnAttachListener(this);
-
-        login = findViewById(R.id.button);
-
-        login.setOnClickListener(v -> {
-            startActivity(new Intent(this, LoginActivity.class));
-        });
 
         if (savedInstanceState == null) {
             if (Sceneform.isSupported(this)) {
@@ -111,8 +96,6 @@ public class SinglePlayerActivity extends AppCompatActivity implements
                         .commit();
             }
         }
-
-        loadModels();
     }
 
     @Override
@@ -188,8 +171,6 @@ public class SinglePlayerActivity extends AppCompatActivity implements
         // If board is already placed then restrict from spawning additional boards
         if (anchor == null) {
             anchor = hitResult.createAnchor();
-            anchor2 = hitResult.createAnchor();
-
 
             anchorNode = new AnchorNode(anchor);
             anchorNode.setParent(arFragment.getArSceneView().getScene());
@@ -228,7 +209,6 @@ public class SinglePlayerActivity extends AppCompatActivity implements
         float boardY = boardNode.getWorldPosition().y + 0.05f;
         float boardZ = boardNode.getWorldPosition().z - 0.415f;
         float squareSize = 0.235f;
-        boolean placed = false;
 
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
@@ -238,10 +218,6 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
 
                 squareWorldPositions.add(new Vector3(squareX, squareY, squareZ));
-//                if(placed != true){
-//                    createPieceNode(squareX, squareY, squareZ, BLACK_NODE);
-//                    placed = true;
-//                }
                 int pieceType = boardArray[row][col];
                 // Create and Populate black nodes
                 if (pieceType == 1) {
@@ -521,5 +497,95 @@ public class SinglePlayerActivity extends AppCompatActivity implements
         }
         return (worldPosition.x >= minX && worldPosition.x <= maxX) && (worldPosition.z >= minZ && worldPosition.z <= maxZ);
     }
+
+    public boolean isGameOver(int[][] boardArray) {
+        boolean redHasPieces = false;
+        boolean blackHasPieces = false;
+        boolean redHasMoves = false;
+        boolean blackHasMoves = false;
+
+        for (int row = 0; row < boardArray.length; row++) {
+            for (int col = 0; col < boardArray[row].length; col++) {
+                int piece = boardArray[row][col];
+                if (piece != 0) {
+                    // Check if the player has pieces
+                    if (piece == 1) {
+                        redHasPieces = true;
+                    } else if (piece == 2) {
+                        blackHasPieces = true;
+                    }
+
+                    // Check if the player has legal moves
+                    if (hasLegalCaptures()) {
+                        if (piece == 1) {
+                            redHasMoves = true;
+                        } else if (piece == 2) {
+                            blackHasMoves = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If a player has no pieces left or no legal moves left, the game is over
+        return !(redHasPieces && blackHasPieces && redHasMoves && blackHasMoves);
+    }
+
+    public boolean hasLegalCaptures() {
+        int[] rowOffsets = {-1, -1, 1, 1};
+        int[] colOffsets = {-1, 1, -1, 1};
+
+        // Iterate through all the squares on the board
+        for (int row = 0; row < boardArray.length; row++) {
+            for (int col = 0; col < boardArray[row].length; col++) {
+
+                int currentPiece = boardArray[row][col];
+
+                if (currentPiece != 0) {
+                    // Iterate through all possible capture directions
+                    for (int direction = 0; direction < rowOffsets.length; direction++) {
+                        int newRow = row + rowOffsets[direction];
+                        int newCol = col + colOffsets[direction];
+
+                        // Check if the new position is inside the board
+
+                            int adjacentPiece = boardArray[newRow][newCol];
+
+                            // Check if the adjacent square contains an opponent's piece
+                            if (isOpponentPiece(currentPiece, adjacentPiece)) {
+                                int captureRow = newRow + rowOffsets[direction];
+                                int captureCol = newCol + colOffsets[direction];
+                                if(captureCol > 8 || captureRow > 8 || captureCol < 0 || captureRow < 0)
+                                {
+                                    return false;
+                                }else{
+                                    return true;
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        // No captures are possible
+        return false;
+    }
+
+    private boolean isOpponentPiece(int piece1, int piece2) {
+        return (piece1 > 0 && piece2 < 0) || (piece1 < 0 && piece2 > 0);
+    }
+
+    // Function to remove a piece from a scene
+    private void removePieceFromScene(Node capturedPiece) {
+        // Set the renderable of the captured piece to null
+        if (capturedPiece instanceof TransformableNode) {
+            TransformableNode renderableNode = (TransformableNode) capturedPiece;
+            renderableNode.setRenderable(null);
+        }
+
+        // Remove the captured piece from the scene
+        capturedPiece.getParent().removeChild(capturedPiece);
+    }
+
 
 }

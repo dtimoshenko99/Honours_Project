@@ -1,3 +1,4 @@
+
 package abertay.uad.ac.uk.myapplication;
 
 import static android.widget.Toast.LENGTH_SHORT;
@@ -7,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
@@ -29,10 +31,28 @@ import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.filament.utils.Utils;
+import com.google.android.gms.auth.api.identity.BeginSignInRequest;
+import com.google.android.gms.auth.api.identity.BeginSignInResult;
+import com.google.android.gms.auth.api.identity.Identity;
+import com.google.android.gms.auth.api.identity.SignInClient;
+import com.google.android.gms.auth.api.identity.SignInCredential;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.CommonStatusCodes;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 
@@ -46,19 +66,26 @@ public class LoginActivity extends AppCompatActivity {
 
     SharedPreferences shared;
     SharedPreferences.Editor editor;
+    private static final int REQ_ONE_TAP = 2;  // Can be any integer unique to the Activity.
+    private boolean showOneTapUI = true;
 
     EditText email, password;
     String emailText, passwordText;
     TextView createButton;
-
     private FirebaseAuth auth;
     LoginButton faceBookLogin;
     CallbackManager callbackManager;
-    Button loginButton, googlePlayLogin;
+    Button loginButton;
+
     FirebaseFirestore firestoreDB;
     FirebaseUser user;
     String patt = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+";
     String passPatt = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$";
+
+    private SignInClient oneTapClient;
+    private BeginSignInRequest signInRequest;
+    private BeginSignInRequest signUpRequest;
+    SignInButton googleSignInButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,7 +95,26 @@ public class LoginActivity extends AppCompatActivity {
         shared = getSharedPreferences("details", Context.MODE_PRIVATE);
         editor = shared.edit();
         checkUser();
+        boolean signedin = isSignedIn();
+        Log.d("onTap", "onCreate: signed?" + signedin);
+
         setContentView(R.layout.activity_login);
+
+        googleSignInButton = findViewById(R.id.sign_in_button);
+        oneTapClient = Identity.getSignInClient(this);
+        signUpRequest = BeginSignInRequest.builder()
+                .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
+                        .setSupported(true)
+                        // Your server's client ID, not your Android client ID.
+                        .setServerClientId(getString(R.string.web_client_id))
+                        // Show all accounts on the device.
+                        .setFilterByAuthorizedAccounts(false)
+                        .build())
+                .build();
+        
+        googleSignInButton.setOnClickListener(v ->{
+           googleSignIn();
+        });
 
         loginButton = findViewById(R.id.loginButton);
 
@@ -77,7 +123,6 @@ public class LoginActivity extends AppCompatActivity {
         faceBookLogin = findViewById(R.id.fbButton);
         faceBookLogin.setReadPermissions(Arrays.asList("public_profile", "email"));
 
-        googlePlayLogin = findViewById(R.id.gpButton);
 
         firestoreDB = FirebaseFirestore.getInstance();
 
@@ -112,6 +157,33 @@ public class LoginActivity extends AppCompatActivity {
 
     }
 
+    private void googleSignIn() {
+        oneTapClient.beginSignIn(signUpRequest)
+                .addOnSuccessListener(this, new OnSuccessListener<BeginSignInResult>() {
+                    @Override
+                    public void onSuccess(BeginSignInResult result) {
+                        try {
+                            startIntentSenderForResult(
+                                    result.getPendingIntent().getIntentSender(), REQ_ONE_TAP,
+                                    null, 0, 0, 0);
+                        } catch (IntentSender.SendIntentException e) {
+                            Log.e("onTap", "Couldn't start One Tap UI: " + e.getLocalizedMessage());
+                        }
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // No saved credentials found. Launch the One Tap sign-up flow, or
+                        // do nothing and continue presenting the signed-out UI.
+                        Log.d("onTap", e.getLocalizedMessage());
+                    }
+                });
+    }
+    private boolean isSignedIn() {
+        return GoogleSignIn.getLastSignedInAccount(this) != null;
+    }
+
     private void checkUser() {
         if (user != null) {
             firestoreDB = FirebaseFirestore.getInstance();
@@ -120,7 +192,8 @@ public class LoginActivity extends AppCompatActivity {
                         if (task.isSuccessful() && !task.getResult().isEmpty()) {
                             QuerySnapshot doc = task.getResult();
                             String username = Objects.requireNonNull(doc.getDocuments().get(0).get("username")).toString();
-                            editor.putString("username", username).apply();
+                            editor.putString("username", username);
+                            editor.apply();
                             startActivity(new Intent(LoginActivity.this, MainMenuActivity.class));
                         }
                     }).addOnFailureListener(e -> Toast.makeText(this, "CheckUser()" + e.getLocalizedMessage(), LENGTH_SHORT).show());
@@ -203,8 +276,78 @@ public class LoginActivity extends AppCompatActivity {
     protected void onActivityResult ( int requestCode, int resultCode, Intent data){
         callbackManager.onActivityResult(requestCode, resultCode, data);
         super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case REQ_ONE_TAP:
+                try {
+                    SignInCredential credential = oneTapClient.getSignInCredentialFromIntent(data);
+                    String idToken = credential.getGoogleIdToken();
+                    if (idToken !=  null) {
+                        AuthCredential firebaseCredential = GoogleAuthProvider.getCredential(idToken, null);
+                        auth.signInWithCredential(firebaseCredential)
+                                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>(){
+                                    @Override
+                                    public void onComplete(@NonNull Task<AuthResult> task) {
+                                        if (task.isSuccessful()) {
+                                            checkAndCreate(credential, idToken);
+                                            FirebaseUser user = auth.getCurrentUser();
+                                            Log.d("onTap", "onComplete: user: +" + user);
+                                        } else {
+                                            // If sign in fails, display a message to the user.
+                                            Log.w("onTap", "signInWithCredential:failure", task.getException());
+                                            updateUi(null);
+                                        }
+                                    }
+                                });
+                    }
+                } catch (ApiException e) {
+                    switch (e.getStatusCode()) {
+                        case CommonStatusCodes.CANCELED:
+                            Log.d("onTap", "One-tap dialog was closed.");
+                            // Don't re-prompt the user.
+                            showOneTapUI = false;
+                            break;
+                        case CommonStatusCodes.NETWORK_ERROR:
+                            Log.d("onTap", "One-tap encountered a network error.");
+                            // Try again or just ignore.
+                            break;
+                        default:
+                            Log.d("onTap", "Couldn't get credential from result."
+                                    + e.getLocalizedMessage());
+                            break;
+                    }
+                }
+                break;
+        }
+
     }
 
+    private void updateUi(Object o) {
+        Log.d("onTap", "updateUi: " + "hello");
+    }
+
+    private void checkAndCreate(SignInCredential credential, String idToken){
+        String displayName = credential.getDisplayName();
+        String email = credential.getId();
+        editor.putString("email", email).apply();
+        firestoreDB.collection("users").whereEqualTo("email", email)
+                .get().addOnCompleteListener(task1 -> {
+            if(task1.isSuccessful() && task1.getResult().isEmpty()){
+//                                progress.setVisibility(View.INVISIBLE);
+                Intent i = new Intent(LoginActivity.this, FacebookUsername.class);
+                i.putExtra("uID", idToken);
+                i.putExtra("userEmail", email);
+                i.putExtra("name", displayName);
+                editor.putString("email", email).apply();
+                startActivity(i);
+            }else if(task1.isSuccessful() && !task1.getResult().isEmpty()){
+                QuerySnapshot doc = task1.getResult();
+                String username = doc.getDocuments().get(0).get("username").toString();
+                editor.putString("username", username).apply();
+                startActivity(new Intent(LoginActivity.this, MainMenuActivity.class));
+            }
+        }).addOnFailureListener(e -> Toast.makeText(LoginActivity.this, ""+e.getLocalizedMessage(), LENGTH_SHORT).show());
+    }
     @Override
     protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
         try{

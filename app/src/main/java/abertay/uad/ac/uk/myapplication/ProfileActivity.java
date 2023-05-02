@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -17,6 +18,9 @@ import android.widget.Toast;
 
 import com.facebook.login.LoginManager;
 import com.google.android.ads.mediationtestsuite.activities.HomeActivity;
+import com.google.android.gms.auth.api.identity.Identity;
+import com.google.android.gms.auth.api.identity.SignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -44,6 +48,7 @@ public class ProfileActivity extends AppCompatActivity {
     EditText input;
     ImageView backButton;
     String usernamePatt = "[^A-Za-z0-9]";
+    private SignInClient oneTapClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +58,8 @@ public class ProfileActivity extends AppCompatActivity {
         shared = getSharedPreferences("details", Context.MODE_PRIVATE);
         editor = shared.edit();
 
+        boolean isSigned = isSignedIn();
+        Log.d("onTap", "onCreate: signed? Profile: " + isSigned);
         usernamePreferences = shared.getString("username", "username");
         emailPreferences = shared.getString("email", "email");
 
@@ -111,6 +118,10 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
 
+    private boolean isSignedIn() {
+        return GoogleSignIn.getLastSignedInAccount(this) != null;
+    }
+
     private void updateUsername() {
         if(usernameInput.isEmpty()){
             input.setError("Please fill this field.");
@@ -143,6 +154,8 @@ public class ProfileActivity extends AppCompatActivity {
                 .setPositiveButton(android.R.string.yes, (dialog, which) -> {
                     auth.signOut();
                     LoginManager.getInstance().logOut();
+                    oneTapClient = Identity.getSignInClient(this);
+                    oneTapClient.signOut();
                     editor.putString("username", "clear").apply();
                     editor.putString("email", "clear").apply();
                     editor.clear();
