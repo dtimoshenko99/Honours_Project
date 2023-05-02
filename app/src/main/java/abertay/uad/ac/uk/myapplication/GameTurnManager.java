@@ -1,6 +1,11 @@
 package abertay.uad.ac.uk.myapplication;
 
+import static abertay.uad.ac.uk.myapplication.GameTurnManager.Player.RED;
+
+import android.app.Activity;
+import android.content.Context;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -23,15 +28,16 @@ public class GameTurnManager {
     }
 
     public Player currentPlayer;
+    private Context context;
 
-    public GameTurnManager() {
+    public GameTurnManager(Context context) {
         int random = (Math.random() <= 0.5) ? 1 : 2;
         if(random == 1){
             currentPlayer = Player.RED;
         } else{
             currentPlayer = Player.BLACK;
         }
-
+        this.context = context;
     }
 
     public boolean isMoveAllowed(String nodeName) {
@@ -93,6 +99,12 @@ public class GameTurnManager {
         switchTurn();
         String nodeName = (currentPlayer == Player.RED) ? "redPiece" : "blackPiece";
         updateSelectableNodes(arFragment, nodeName);
+    }
+
+    public void updateTurnIndicator() {
+        TextView turnIndicator = (TextView) ((Activity)context).findViewById(R.id.turnIndicator);
+        String currentPlayerName = currentPlayer == RED ? "Red" : "Black";
+        turnIndicator.setText("Turn: " + currentPlayerName);
     }
 
 }
