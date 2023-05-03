@@ -89,6 +89,9 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
     @Override
     public void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
+        Log.d(TAG, "onTapPlane: " + hitResult);
+        Log.d(TAG, "onTapPlane: Distance: " + hitResult.getDistance());
+        Log.d(TAG, "onTapPlane: HitPose: " + hitResult.getHitPose());
         gameInitialization.createAnchors(hitResult, arFragment);
     }
 

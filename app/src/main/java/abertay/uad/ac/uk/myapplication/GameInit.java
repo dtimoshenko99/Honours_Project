@@ -138,13 +138,31 @@ public class GameInit {
             Toast.makeText(context, "Loading...", Toast.LENGTH_SHORT).show();
             return;
         }
-
-        // Create the Anchor
-        // If board is already placed then restrict from spawning additional boards
         if (anchor == null) {
-            anchor = hitResult.createAnchor();
 
-            anchorNode = new AnchorNode(anchor);
+            // Get the HitResult position as a float[] array
+            float[] hitPositionArray = hitResult.getHitPose().getTranslation();
+
+            // Convert the float[] array to a Vector3
+            Vector3 hitPosition = new Vector3(hitPositionArray[0], hitPositionArray[1], hitPositionArray[2]);
+
+            // Modify the X-axis (or any other axis)
+            float newX = 0; // Set the board in the centre of the screen
+            Vector3 newPosition = new Vector3(newX, hitPosition.y, hitPosition.z);
+
+            // Create a new translation Pose
+            Pose newTranslationPose = Pose.makeTranslation(newPosition.x, newPosition.y, newPosition.z);
+
+            // Create a new rotation Pose from the original HitResult rotation
+            Pose newRotationPose = Pose.makeRotation(0, 0, 0, 0);
+
+            // Combine the translation and rotation Poses
+            Pose newPose = newTranslationPose.compose(newRotationPose);
+
+            // Create an Anchor at the new Pose
+            Anchor newAnchor = arFragment.getArSceneView().getSession().createAnchor(newPose);
+
+            anchorNode = new AnchorNode(newAnchor);
             anchorNode.setParent(arFragment.getArSceneView().getScene());
 
             Quaternion rotationAnchor = Quaternion.axisAngle(new Vector3(0.0f, 0f, 0.0f),  0);
@@ -155,8 +173,9 @@ public class GameInit {
             boardNode.setParent(anchorNode);
             boardNode.setRenderable(this.board);
             boardNode.setLocalScale(new Vector3(0.02f, 0.02f, 0.02f));
-            boardNode.setLocalPosition(new Vector3(0f, -0.02f, 0f));
-
+            boardNode.setLocalPosition(new Vector3(0f, -0.10f, 0f));
+            boardNode.setWorldRotation(Quaternion.eulerAngles(new Vector3(0,0,0)));
+            Log.d("onTap", "createAnchors: " + boardNode.getWorldRotation());
             // Rotate the board 90 degrees
             Quaternion rotationLocal = Quaternion.axisAngle(new Vector3(0.0f, 1.0f, 0.0f),  90);
             boardNode.setLocalRotation(rotationLocal);
