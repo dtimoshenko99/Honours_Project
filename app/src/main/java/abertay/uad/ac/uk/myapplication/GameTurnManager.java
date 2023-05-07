@@ -13,18 +13,22 @@ import com.google.ar.sceneform.ux.TransformableNode;
 
 public class GameTurnManager {
     public enum Player {
-        RED("redPiece"),
-        BLACK("blackPiece");
+        RED("redPiece", "red"),
+        BLACK("blackPiece", "black");
 
         private String nodeName;
+        private String color;
 
-        Player(String nodeName) {
+        Player(String nodeName, String color) {
+
             this.nodeName = nodeName;
+            this.color = color;
         }
 
         public String getNodeName() {
             return nodeName;
         }
+        public String getColor(){ return color;}
     }
 
     public Player currentPlayer;

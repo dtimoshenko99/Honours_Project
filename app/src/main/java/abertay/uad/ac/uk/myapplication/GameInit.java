@@ -1,7 +1,9 @@
 package abertay.uad.ac.uk.myapplication;
 
+import static com.facebook.FacebookSdk.getApplicationContext;
 import static abertay.uad.ac.uk.myapplication.GameTurnManager.Player.RED;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
@@ -20,8 +22,12 @@ import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
+import com.google.ar.sceneform.rendering.Color;
+import com.google.ar.sceneform.rendering.Material;
+import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.Renderable;
+import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
@@ -32,12 +38,14 @@ public class GameInit {
     private Context context;
     private ArFragment arFragment;
     public Renderable redPiece, blackPieces, board;
-    private Anchor anchor;
+    private Anchor mainAnchor;
     private Node boardNode;
     private AnchorNode anchorNode;
+    public TransformableNode redHighlightNode, greenHighlightNode;
     GameTurnManager turnManager;
     private OnPieceTouchListener onPieceTouchListener;
     private TransformableNode[][] nodesArray;
+    ModelRenderable cubeRenderable;
 
     private int[][] boardArray = {
             {0, 1, 0, 1, 0, 1, 0, 1},
@@ -94,17 +102,13 @@ public class GameInit {
     }
 
     public void loadModels() {
-//        WeakReference<SinglePlayerActivity> weakActivity = new WeakReference<>(SinglePlayerActivity.class);
         ModelRenderable.builder()
                 .setSource(context, Uri.parse("models/board/scene.gltf"))
                 .setIsFilamentGltf(true)
                 .setAsyncLoadEnabled(true)
                 .build()
                 .thenAccept(model -> {
-//                    SinglePlayerActivity activity = weakActivity.get();
-//                    if (activity != null) {
-//                        activity.board = model;
-//                    }
+
                 board = model;
                 })
                 .exceptionally(throwable -> {
@@ -119,16 +123,40 @@ public class GameInit {
                 .setAsyncLoadEnabled(true)
                 .build()
                 .thenAccept(piecesModel -> {
-//                    SinglePlayerActivity activity = weakActivity1.get();
-//                    if (activity != null) {
-//                        activity.blackPieces = piecesModel;
-//                    }
                     blackPieces = piecesModel;
+                    redPiece = piecesModel;
                 })
                 .exceptionally(throwable -> {
                     Toast.makeText(context, "Unable to load white pieces" + throwable, Toast.LENGTH_LONG).show();
                     return null;
                 });
+
+        MaterialFactory.makeTransparentWithColor(context, new Color(1f, 0, 0, 1f))
+                .thenAccept(material -> {
+                    cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
+
+                    // Attach the cube renderable to the anchor node at the position of the highlighted square
+                    AnchorNode highlightAnchorNode = new AnchorNode(mainAnchor);
+                    highlightAnchorNode.setParent(arFragment.getArSceneView().getScene());
+                    redHighlightNode = new TransformableNode(arFragment.getTransformationSystem());
+                    redHighlightNode.setParent(highlightAnchorNode);
+                    redHighlightNode.setRenderable(cubeRenderable);
+                    redHighlightNode.setEnabled(false);
+                });
+
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+                .thenAccept(material -> {
+                    cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
+
+                    // Attach the cube renderable to the anchor node at the position of the highlighted square
+                    AnchorNode highlightAnchorNode = new AnchorNode(mainAnchor);
+                    highlightAnchorNode.setParent(arFragment.getArSceneView().getScene());
+                    greenHighlightNode = new TransformableNode(arFragment.getTransformationSystem());
+                    greenHighlightNode.setParent(highlightAnchorNode);
+                    greenHighlightNode.setRenderable(cubeRenderable);
+                    greenHighlightNode.setEnabled(false);
+                });
+
     }
 
 
@@ -138,7 +166,7 @@ public class GameInit {
             Toast.makeText(context, "Loading...", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (anchor == null) {
+        if (mainAnchor == null) {
 
             // Get the HitResult position as a float[] array
             float[] hitPositionArray = hitResult.getHitPose().getTranslation();
@@ -154,28 +182,24 @@ public class GameInit {
             Pose newTranslationPose = Pose.makeTranslation(newPosition.x, newPosition.y, newPosition.z);
 
             // Create a new rotation Pose from the original HitResult rotation
-            Pose newRotationPose = Pose.makeRotation(0, 0, 0, 0);
+            Pose newRotationPose = Pose.makeRotation(0, -0.05f, 0, 0);
 
             // Combine the translation and rotation Poses
             Pose newPose = newTranslationPose.compose(newRotationPose);
 
             // Create an Anchor at the new Pose
-            Anchor newAnchor = arFragment.getArSceneView().getSession().createAnchor(newPose);
+            mainAnchor = arFragment.getArSceneView().getSession().createAnchor(newPose);
 
-            anchorNode = new AnchorNode(newAnchor);
+            anchorNode = new AnchorNode(mainAnchor);
             anchorNode.setParent(arFragment.getArSceneView().getScene());
 
-            Quaternion rotationAnchor = Quaternion.axisAngle(new Vector3(0.0f, 0f, 0.0f),  0);
-            anchorNode.setLocalRotation(rotationAnchor);
-
-
+            // Create a Node to hold anchorNode
             boardNode = new Node();
             boardNode.setParent(anchorNode);
             boardNode.setRenderable(this.board);
             boardNode.setLocalScale(new Vector3(0.02f, 0.02f, 0.02f));
             boardNode.setLocalPosition(new Vector3(0f, -0.10f, 0f));
-            boardNode.setWorldRotation(Quaternion.eulerAngles(new Vector3(0,0,0)));
-            Log.d("onTap", "createAnchors: " + boardNode.getWorldRotation());
+
             // Rotate the board 90 degrees
             Quaternion rotationLocal = Quaternion.axisAngle(new Vector3(0.0f, 1.0f, 0.0f),  90);
             boardNode.setLocalRotation(rotationLocal);
@@ -183,6 +207,9 @@ public class GameInit {
             // Disable white dots which show the place on the plane that the board can be placed on
             arFragment.getArSceneView().getPlaneRenderer().setVisible(false);
 
+            // Colour the pieces into black
+//            Material material = blackPieces.getMaterial();
+//            material.setFloat4("baseColorTint", new Color(android.graphics.Color.BLACK));
             // Populate the board with pieces
             populateBoard();
 
@@ -237,7 +264,11 @@ public class GameInit {
 
         nodesArray[row][col] = piece;
 
-        piece.setRenderable(blackPieces);
+        if(node.equals("redPiece")){
+            piece.setRenderable(redPiece);
+        }else{
+            piece.setRenderable(blackPieces);
+        }
         piece.setSelectable(true);
         piece.setEnabled(true);
         Quaternion oldRotation1 = piece.getLocalRotation();

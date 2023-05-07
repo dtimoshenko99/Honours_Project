@@ -2,40 +2,52 @@ package abertay.uad.ac.uk.myapplication;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Looper;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.widget.Toast;
 
-import com.google.api.LogDescriptor;
-import com.google.ar.core.Anchor;
-import com.google.ar.core.HitResult;
-import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Vector3;
-import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
+import com.google.rpc.Help;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.logging.Handler;
 
 public class GameLogic {
 
     private boolean nodeSelected = false;
     private TransformableNode selectedNode;
     private Vector3 pickUpPosition;
-    private GameTurnManager turnManager;
-    private GameInit gameInit;
-    private String winner;
+    private final GameTurnManager turnManager;
+    private HelperFunctions helperFunctions;
+    private final GameInit gameInit;
+    public String winner;
+    private int middleRow, middleCol;
+    private int capturedRed, capturedBlack;
 
-    private Vector3 worldLastKnown;
+    // Variables to hold state of the game
+    private boolean lastTurnWasCapture = false;
+    private boolean captured = false;
+    private boolean userHasCaptures = false;
+    private boolean wronglyPlacedPiece = false;
+    private boolean samePlace = false;
+    private int[] captureAt = new int[2];
+    private int[] returnTo = new int[2];
+
+
     private final String TAG = "onTap";
 
     public GameLogic(GameTurnManager turnManager, GameInit gameInit) {
         this.turnManager = turnManager;
         this.gameInit = gameInit;
+        this.helperFunctions = new HelperFunctions(gameInit, this);
+    }
+
+    public void setWinner(String winner){
+        this.winner = winner;
     }
 
     private List<Vector3> squareWorldPositions;
@@ -43,38 +55,89 @@ public class GameLogic {
     public void pieceDropped(TransformableNode node){
 
         squareWorldPositions = gameInit.getSquareWorldPositions();
-        worldLastKnown = node.getWorldPosition();
+
+        Vector3 worldLastKnown = node.getWorldPosition();
         Vector3 worldSquarePos = getClosestSquarePosition(worldLastKnown);
-        Vector3 pickUpSquarePos = getClosestSquarePosition(pickUpPosition);
-        int[] colAndRow = getRowColFromWorldPosition(worldLastKnown, squareWorldPositions, 8,8);
-        Log.d(TAG, "onTouch: ROW AND COL" + colAndRow[0] + ", " + colAndRow[1]);
 
-        int[] pickupRowAndCol = getRowColFromWorldPosition(pickUpPosition, squareWorldPositions, 8,8);
+        int[] colAndRow = HelperFunctions.getRowColFromWorldPosition(worldLastKnown, squareWorldPositions, 8,8);
+        int[] pickupRowAndCol = HelperFunctions.getRowColFromWorldPosition(pickUpPosition, squareWorldPositions, 8,8);
+
+        boolean isInsideBoard = helperFunctions.isInsideBoard(worldLastKnown);
+        boolean isTurnValid = isValidMove(pickupRowAndCol[1], pickupRowAndCol[0], colAndRow[1], colAndRow[0], selectedNode);
+
+        checkAndUpdate(isTurnValid, isInsideBoard, pickupRowAndCol, colAndRow, worldSquarePos);
+    }
+
+    public void checkAndUpdate(boolean isTurnValid, boolean isInsideBoard, int[] pickupRowAndCol, int[] colAndRow, Vector3 worldSquarePos){
         // Check if the move was valid
-        boolean isValid = isValidMove(pickupRowAndCol[1], pickupRowAndCol[0], colAndRow[1], colAndRow[0]);
-
-        if(!isValid){
-            AnchorNode parent = (AnchorNode) selectedNode.getParent();
-            assert parent != null;
-            parent.setWorldPosition(pickUpPosition);
+        if(!isTurnValid || !isInsideBoard){
             selectedNode.setLocalPosition(new Vector3(0,0,0));
-        }else{
-            node.setWorldPosition(worldSquarePos);
+            // Set the right position to return to
+            if(samePlace){
+                Toast.makeText(gameInit.getContext(), "This is not valid, please move diagonaly", Toast.LENGTH_SHORT).show();
+                samePlace = false;
+            }
+            else if(!wronglyPlacedPiece) {
+                returnTo[0] = pickupRowAndCol[1];
+                returnTo[1] = pickupRowAndCol[0];
+                gameInit.redHighlightNode.setEnabled(true);
+                gameInit.redHighlightNode.setWorldPosition(new Vector3(pickUpPosition.x, pickUpPosition.y - 0.02f, pickUpPosition.z));
+                wronglyPlacedPiece = true;
 
+            }else if(colAndRow[1] == returnTo[0] && colAndRow[0] == returnTo[1] && wronglyPlacedPiece){
+                gameInit.redHighlightNode.setEnabled(false);
+                returnTo[0] = 0;
+                returnTo[1] = 0;
+                wronglyPlacedPiece = false;
+            }
 
-            // Switches the turn and updates the corresponding node's setSelectable value
-            turnManager.switchTurnAndUpdateSelectableNodes(gameInit.getArFragment());
+        }else if(!wronglyPlacedPiece){
+            gameInit.redHighlightNode.setEnabled(false);
 
-            // Update textview with the text of whose turn it is
-            turnManager.updateTurnIndicator();
-            if(isGameOver(gameInit.getBoardArray())){
-                Context context = gameInit.getContext();
-                Intent intent = new Intent(context, EndGameActivity.class);
-                intent.putExtra("winner", "red");
-                context.startActivity(intent);
+            if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
+                selectedNode.setWorldPosition(worldSquarePos);
+                updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
+            }else {
+                userHasCaptures = false;
+                gameInit.greenHighlightNode.setEnabled(false);
+                // Does have one more to capture, but updating board anyway, as the turn wast taken
+                // Update board array
+                selectedNode.setWorldPosition(worldSquarePos);
+                // Switches the turn and updates the corresponding node's setSelectable value
+                turnManager.switchTurnAndUpdateSelectableNodes(gameInit.getArFragment());
+                // Update board array
+                updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
+
+                // Update textview with the text of whose turn it is
+                turnManager.updateTurnIndicator();
+
+                checkForAvailableCapturesOnStartTurn();
+
+                if(helperFunctions.isGameOver(gameInit.getBoardArray())){
+                    Context context = gameInit.getContext();
+                    Intent intent = new Intent(context, EndGameActivity.class);
+                    intent.putExtra("winner", winner);
+                    context.startActivity(intent);
+                }
             }
         }
     }
+
+    public void checkForAvailableCapturesOnStartTurn(){
+        List<int[]> capturePositions = helperFunctions.getCapturePositions(turnManager.currentPlayer);
+
+        if(!capturePositions.isEmpty()){
+            for (int[] position : capturePositions) {
+                Log.d(TAG, "checkAndUpdate: " +Arrays.toString(position));
+                int row = position[0];
+                int col = position[1];
+
+            }
+            Log.d(TAG, "checkAndUpdate: " + (capturePositions));
+        }
+
+    }
+
 
     public boolean onTouchMethod(HitTestResult hitTestResult, MotionEvent motionEvent){
         Node node = hitTestResult.getNode();
@@ -96,16 +159,7 @@ public class GameLogic {
 //                        isInsideBoard(selectedNode.getWorldPosition());
                         break;
                     case MotionEvent.ACTION_UP:
-                        // TODO: Need to implement here a check if the position is outside the board with the function above - return to pickup without further operations
-                        // The function is ready, jsut need to push back the piece if it is out of bounds
-                        if(!isInsideBoard(selectedNode.getWorldPosition())){
-                            selectedNode.setWorldPosition(pickUpPosition);
-                            AnchorNode parent = (AnchorNode) selectedNode.getParent();
-                            parent.setWorldPosition(pickUpPosition);
-                            selectedNode.setLocalPosition(new Vector3(0,0.05f,0));
-                        }else{
-                            pieceDropped(selectedNode);
-                        }
+                        pieceDropped(selectedNode);
                         nodeSelected = false;
                         break;
                 }
@@ -121,52 +175,30 @@ public class GameLogic {
     private void updateBoardStartArray(int initialCol, int initialRow, int destCol, int destRow, int middleCol, int middleRow) {
 
         TransformableNode[][] nodesArray = gameInit.getNodesArray();
-        Log.d(TAG, "updateBoardStartArray: initial array; " + Arrays.deepToString(nodesArray));
         int[][] boardArray = gameInit.getBoardArray();
         // Get the piece value from the initial square
+
         int pieceValue = boardArray[initialRow][initialCol];
         TransformableNode nodeValue = nodesArray[initialRow][initialCol];
-        Log.d(TAG, "updateBoardStartArray: pieceValue" + pieceValue);
-        Log.d(TAG, "updateBoardStartArray: nodeValue " + nodeValue);
 
-        if(middleRow != 0 && middleCol != 0){
+        if(captured){
             boardArray[middleRow][middleCol] = 0;
+            nodesArray[middleRow][middleCol] = null;
         }
         // Set the initial square to 0 (unoccupied)
         boardArray[initialRow][initialCol] = 0;
         nodesArray[initialRow][initialCol] = null;
-        Log.d(TAG, "updateBoardStartArray: changed, should be 0, null; " + boardArray[initialRow][initialCol] + " " + nodesArray[initialRow][initialCol]);
 
-        // Update the destination square with the moved piece value
+        // Update the destination square with the moved piece value and update array in GameInit
         nodesArray[destRow][destCol] = nodeValue;
         gameInit.setNodesArray(nodesArray);
         boardArray[destRow][destCol] = pieceValue;
-        Log.d(TAG, "updateBoardStartArray: destination: " + boardArray[destRow][destCol]);
         gameInit.setBoardArray(boardArray);
 
-    }
-
-    boolean isInsideBoard(Vector3 worldPosition) {
-        Node boardNode = gameInit.getBoardNode();
-        Vector3 boardCenter = boardNode.getWorldPosition();
-        float boardWidth = 1.0f;
-        float boardLength = 1.0f;
-
-        float halfWidth = boardWidth / 2;
-        float halfLength = boardLength / 2;
-
-        float minX = boardCenter.x - halfWidth;
-        float maxX = boardCenter.x + halfWidth;
-        float minZ = boardCenter.z - halfLength;
-        float maxZ = boardCenter.z + halfLength;
-
-        if((worldPosition.x >= minX && worldPosition.x <= maxX) && (worldPosition.z >= minZ && worldPosition.z <= maxZ)){
-            return true;
-        }else{
-            return false;
-        }
 
     }
+
+
 
     private Vector3 getClosestSquarePosition(Vector3 pieceWorldPosition){
         squareWorldPositions = gameInit.getSquareWorldPositions();
@@ -191,161 +223,75 @@ public class GameLogic {
         return pickUpPosition;
     }
 
-    private int[] getRowColFromWorldPosition(Vector3 worldPosition, List<Vector3> squareWorldPositions, int numRows, int numCols) {
-        int closestRow = -1;
-        int closestCol = -1;
-        float minDistance = Float.MAX_VALUE;
 
-        for (int row = 0; row < numRows; row++) {
-            for (int col = 0; col < numCols; col++) {
-                int index = row * numCols + col;
-                Vector3 squarePosition = squareWorldPositions.get(index);
-                float distance = euclideanDistance(worldPosition, squarePosition);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestRow = row;
-                    closestCol = col;
-                }
-            }
-        }
-
-        return new int[]{closestRow, closestCol};
-    }
-
-    private float euclideanDistance(Vector3 v1, Vector3 v2) {
-        float dx = v2.x - v1.x;
-        float dy = v2.y - v1.y;
-        float dz = v2.z - v1.z;
-        return (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    private boolean isSquareOccupied(int row, int col) {
-        int[][] boardArray = gameInit.getBoardArray();
-        if(boardArray[row][col] == 0){
-            return false;
-        }else{
-            return true;
-        }
-    }
-
-    public boolean hasLegalMoves() {
+    public boolean hasCaptures(int col, int row, TransformableNode node) {
         int[] rowOffsets = {-1, -1, 1, 1};
         int[] colOffsets = {-1, 1, -1, 1};
         int[][] boardArray = gameInit.getBoardArray();
+        int currentPiece;
+        int opponentPiece;
+        if(node.getName() == "redPiece"){
+            currentPiece = 2;
+        }else{
+            currentPiece = 1;
+        }
 
-        // Iterate through all the squares on the board
-        for (int row = 0; row < boardArray.length; row++) {
-            for (int col = 0; col < boardArray[row].length; col++) {
+            // Iterate through all possible capture directions
+            for (int direction = 0; direction < rowOffsets.length; direction++) {
+                int newRow = row + 2 * rowOffsets[direction];
+                int newCol = col + 2 * colOffsets[direction];
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
 
-                int currentPiece = boardArray[row][col];
+                    int midRow = row + rowOffsets[direction];
+                    int midCol = col + colOffsets[direction];
+                    int middlePiece = boardArray[midRow][midCol];
 
-                if (currentPiece != 0) {
-                    // Iterate through all possible move directions
-                    for (int direction = 0; direction < rowOffsets.length; direction++) {
-                        int newRow = row + rowOffsets[direction];
-                        int newCol = col + colOffsets[direction];
-
-                        // Check if the new position is inside the board
-                        if (newRow >= 0 && newRow < boardArray.length && newCol >= 0 && newCol < boardArray[row].length) {
-
-                            int adjacentPiece = boardArray[newRow][newCol];
-
-                            // Check if the adjacent square is empty
-                            if (adjacentPiece == 0) {
-                                return true;
-                            }
-
-                            // Check if the adjacent square contains an opponent's piece
-                            if (isOpponentPiece(currentPiece, adjacentPiece)) {
-                                int captureRow = newRow + rowOffsets[direction];
-                                int captureCol = newCol + colOffsets[direction];
-
-                                // Check if the capture position is inside the board
-                                if (captureRow >= 0 && captureRow < boardArray.length && captureCol >= 0 && captureCol < boardArray[row].length) {
-                                    // Check if the capture square is empty
-                                    if (boardArray[captureRow][captureCol] == 0) {
-                                        return true;
-                                    }
-                                }
-                            }
-                        }
+                    if(currentPiece == 1){
+                        opponentPiece = 2;
+                    }else{
+                        opponentPiece = 1;
+                    }
+                    // Check if the adjacent square contains an opponent's piece and if the capture square is empty
+                    if (middlePiece == opponentPiece && boardArray[newRow][newCol] == 0 && lastTurnWasCapture) {
+                        userHasCaptures = true;
+                        helperFunctions.updateNodes(node);
+                        captureAt[0] = newRow;
+                        captureAt[1] = newCol;
+                        return true;
                     }
                 }
+
             }
-        }
-        // No legal moves are possible
-        return false;
-    }
-
-
-    private boolean isOpponentPiece(int piece1, int piece2) {
-        return (piece1 > 0 && piece2 < 0) || (piece1 < 0 && piece2 > 0);
-    }
-
-    public boolean isGameOver(int[][] boardArray) {
-        boolean redHasPieces = false;
-        boolean blackHasPieces = false;
-        boolean redHasMoves = false;
-        boolean blackHasMoves = false;
-
-        for (int row = 0; row < boardArray.length; row++) {
-            for (int col = 0; col < boardArray[row].length; col++) {
-                int piece = boardArray[row][col];
-                if (piece != 0) {
-                    // Check if the player has pieces
-                    if (piece == 1) {
-                        redHasPieces = true;
-                    } else if (piece == 2) {
-                        blackHasPieces = true;
-                    }
-
-                    // Check if the player has legal captures
-                    if (hasLegalMoves()) {
-                        if (piece == 1) {
-                            redHasMoves = true;
-                        } else if (piece == 2) {
-                            blackHasMoves = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        if(blackHasPieces && redHasPieces){
             return false;
-        }else if(!blackHasPieces){
-            winner = "red";
-            return true;
-        }else if(!redHasPieces){
-            winner = "black";
-            return true;
-        }else if(blackHasMoves && redHasMoves){
-            return false;
-        }else if(!blackHasMoves){
-            winner = "red";
-            return true;
-        }else if(!redHasMoves){
-            winner = "black";
-            return true;
-        }
-
-        return false;
     }
 
-    private boolean isValidMove(int initialCol, int initialRow, int destCol, int destRow) {
+    private boolean isValidMove(int initialCol, int initialRow, int destCol, int destRow, Node node) {
         int[][] boardArray = gameInit.getBoardArray();
         int rowDiff = Math.abs(destRow - initialRow);
         int colDiff = Math.abs(destCol - initialCol);
+        int opponentPiece;
+        if(node.getName().equals("redPiece")){
+            opponentPiece = 1;
+        }else{
+            opponentPiece = 2;
+        }
 
-        Log.d(TAG, "isValidMove: Initialcol+row: " + initialCol + "  " + initialRow);
-        Log.d(TAG, "isValidMove: destCol and Row " + destCol + "  " + destRow);
-        Log.d(TAG, "isValidMove: rowDiff" + rowDiff);
-        Log.d(TAG, "isValidMove: colDiff" + colDiff);
+        if(userHasCaptures && destCol != captureAt[1] && destRow != captureAt[0]){
+            Log.d(TAG, "isValidMove: " + destCol + " " + destRow);
+            Log.d(TAG, "isValidMove: " + captureAt[1] + " " + captureAt[0]);
+            return false;
+        }
 
+        if(rowDiff == 0 && colDiff == 0){
+            Log.d(TAG, "isValidMove: Same place turn");
+            samePlace = true;
+            return false;
+        }
+        
         // Check if the move is diagonal
         if (rowDiff != colDiff) {
             Log.d(TAG, "isValidMove: Move is not diagonal");
+            Log.d(TAG, "isValidMove: row dif " + rowDiff + " col dif: " + colDiff);
             return false;
         }
 
@@ -355,12 +301,8 @@ public class GameLogic {
             return false;
         }
 
-
-        int currentPlayerPiece = boardArray[initialRow][initialCol];
-        int opponentPiece = (currentPlayerPiece == 1) ? 2 : 1;
-
         // Check if the destination square is occupied
-        if (isSquareOccupied(destRow, destCol)) {
+        if (helperFunctions.isSquareOccupied(destRow, destCol)) {
             Log.d(TAG, "isValidMove: Space is OCCUPIED: " + destRow + "  " + destCol);
             // If the move is 1 square long, it's invalid because the destination is occupied
             if (rowDiff == 1 && colDiff == 1) {
@@ -376,35 +318,37 @@ public class GameLogic {
 
         // If the move is 2 squares long, check if the player can capture the piece
         if (rowDiff == 2 && colDiff == 2) {
-            int middleRow = (initialRow + destRow) / 2;
-            int middleCol = (initialCol + destCol) / 2;
+            middleRow = (initialRow + destRow) / 2;
+            middleCol = (initialCol + destCol) / 2;
 
-            Log.d(TAG, "isValidMove: middle row" + middleRow);
-            Log.d(TAG, "isValidMove: middle col; " + middleCol);
+
             // Check if the piece in the middle square belongs to the opponent
             if (boardArray[middleRow][middleCol] != opponentPiece) {
+                Log.d(TAG, "isValidMove: Middle array value:" + boardArray[middleRow][middleCol]);
+                Log.d(TAG, "isValidMove: Opponent piece" + opponentPiece);
+                Log.d(TAG, "isValidMove: middle: " + middleRow + " " + middleCol);
+                captured = false;
                 return false;
             }
             else{
-                // Get the node in the middle and delete it from the board + UPDATE THE BOARD ARRAY!!!!!!!!!
-                updateBoardStartArray(initialCol, initialRow, destCol, destRow, middleCol, middleRow);
+                // Get the node in the middle and delete it from the board
+                captured = true;
+                lastTurnWasCapture = true;
+                Log.d(TAG, "isValidMove: Get middle and delete");
                 TransformableNode[][] nodeArray = gameInit.getNodesArray();
-                removePieceFromScene(nodeArray[middleRow][middleCol]);
+                helperFunctions.removePieceFromScene(nodeArray[middleRow][middleCol]);
+                if(opponentPiece == 1){
+                    capturedRed += 1;
+                }else{
+                    capturedBlack += 1;
+                }
                 return true;
             }
         }
-        return true;
+            lastTurnWasCapture = false;
+            return true;
+
     }
 
-    // Function to remove a piece from a scene
-    private void removePieceFromScene(TransformableNode capturedPiece) {
-        // Set the renderable of the captured piece to null
-        if (capturedPiece != null) {
-            TransformableNode renderableNode = capturedPiece;
-            Log.d(TAG, "removePieceFromScene: removing node: " + capturedPiece.getName() + "  " + capturedPiece.getParentNode()) ;
-            renderableNode.setRenderable(null);
-            capturedPiece.getParent().removeChild(capturedPiece);
 
-        }
-    }
 }
