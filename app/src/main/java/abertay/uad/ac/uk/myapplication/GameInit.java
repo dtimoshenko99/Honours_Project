@@ -47,6 +47,7 @@ public class GameInit {
     private OnPieceTouchListener onPieceTouchListener;
     private TransformableNode[][] nodesArray;
     ModelRenderable cubeRenderable;
+    private String gameType;
 
     private int[][] boardArray = {
             {0, 1, 0, 1, 0, 1, 0, 1},
@@ -66,12 +67,13 @@ public class GameInit {
         return squareWorldPositions;
     }
 
-    public GameInit(Context context, ArFragment arFragment, GameTurnManager turnManager, OnPieceTouchListener onPieceTouchListener) {
+    public GameInit(Context context, ArFragment arFragment, GameTurnManager turnManager, OnPieceTouchListener onPieceTouchListener, String gameType) {
         this.context = context;
         this.arFragment = arFragment;
         this.turnManager = turnManager;
         this.onPieceTouchListener = onPieceTouchListener;
         nodesArray = new TransformableNode[8][8];
+        this.gameType = gameType;
     }
 
     public Node getBoardNode(){

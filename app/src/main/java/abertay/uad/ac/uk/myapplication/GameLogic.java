@@ -21,6 +21,7 @@ public class GameLogic {
     private TransformableNode selectedNode;
     private Vector3 pickUpPosition;
     private final GameTurnManager turnManager;
+    private final GameDatabaseManipulations gameDatabaseManipulations;
     private HelperFunctions helperFunctions;
     private final GameInit gameInit;
     public String winner;
@@ -41,10 +42,11 @@ public class GameLogic {
 
     private final String TAG = "onTap";
 
-    public GameLogic(GameTurnManager turnManager, GameInit gameInit) {
+    public GameLogic(GameTurnManager turnManager, GameInit gameInit, GameDatabaseManipulations gameDatabaseManipulations) {
         this.turnManager = turnManager;
         this.gameInit = gameInit;
         this.helperFunctions = new HelperFunctions(gameInit, this);
+        this.gameDatabaseManipulations = gameDatabaseManipulations;
     }
 
     public void setWinner(String winner){
@@ -93,7 +95,6 @@ public class GameLogic {
                 wronglyPlacedPiece = false;
                 Toast.makeText(gameInit.getContext(), "Thank you.", Toast.LENGTH_SHORT).show();
             }
-
         }else if(!wronglyPlacedPiece){
             gameInit.redHighlightNode.setEnabled(false);
             capturePositions.clear();
@@ -213,6 +214,7 @@ public class GameLogic {
         boardArray[destRow][destCol] = pieceValue;
         gameInit.setBoardArray(boardArray);
 
+        gameDatabaseManipulations.updateArrays(boardArray, nodesArray);
 
     }
 

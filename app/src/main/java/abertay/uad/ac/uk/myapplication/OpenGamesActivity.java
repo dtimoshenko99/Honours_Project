@@ -4,7 +4,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -34,6 +37,9 @@ import java.util.Map;
 
 public class OpenGamesActivity extends AppCompatActivity {
 
+    private ImageView arrowBack;
+    private SharedPreferences shared;
+    private SharedPreferences.Editor editor;
     private FirebaseAuth auth;
     private List<Lobby> lobbyList;
     private EditText lobbyName;
@@ -42,11 +48,14 @@ public class OpenGamesActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private LobbyAdapter lobbyListAdapter;
     private Button refresh, create;
+    private String userToken;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_open_games);
 
+        shared = getSharedPreferences("details", Context.MODE_PRIVATE);
+        editor = shared.edit();
         auth = FirebaseAuth.getInstance();
         lobbyList = new ArrayList<>();
 
@@ -77,14 +86,25 @@ public class OpenGamesActivity extends AppCompatActivity {
                 lobbyName.setError("Please enter lobby name");
             }
         });
+
+        arrowBack = findViewById(R.id.openGamesArrowBack);
+        arrowBack.setOnClickListener(v -> {
+            startActivity(new Intent(OpenGamesActivity.this, MainMenuActivity.class));
+        });
+    }
+
+    @Override
+    public void onBackPressed(){
+        startActivity(new Intent(OpenGamesActivity.this, MainMenuActivity.class));
+        finish();
     }
 
     public void createLobby(String lobbyName) {
-        Log.d("onTap", "createLobby: HUH?");
         // Get a reference to the Firebase Firestore database
         db = FirebaseFirestore.getInstance();
         // Create a new lobby document with a unique ID
         DocumentReference document = db.collection("lobbies").document();
+
 
         // Create a data object for the new lobby document
         Map<String, Object> lobbyData = new HashMap<>();
@@ -92,11 +112,14 @@ public class OpenGamesActivity extends AppCompatActivity {
         lobbyData.put("hostUsername", FirebaseAuth.getInstance().getCurrentUser().getDisplayName());
         lobbyData.put("currentPlayers", 1);
         lobbyData.put("id" , document.getId());
-        lobbyData.put("hostFcmToken", getFcmToken());
+        lobbyData.put("hostReady", false);
+        lobbyData.put("opponentReady", false);
+        lobbyData.put("opponentJoined", false);
+        lobbyData.put("guestUsername", "");
 
 
         // Set the data for the new lobby document
-        db.collection("lobbies").document().set(lobbyData)
+        document.set(lobbyData)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
@@ -115,25 +138,6 @@ public class OpenGamesActivity extends AppCompatActivity {
                         // Handle any errors here
                     }
                 });
-    }
-
-    public String getFcmToken(){
-        final String[] fcmToken = new String[1];
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(new OnCompleteListener<String>() {
-                    @Override
-                    public void onComplete(@NonNull Task<String> task) {
-                        if (!task.isSuccessful()) {
-                            Log.w("onTap", "Fetching FCM registration token failed", task.getException());
-                            return;
-                        }
-
-                        // Get the token
-                        fcmToken[0] = task.getResult();
-                        Log.d("onTap", "FCM registration token: " + fcmToken[0]);
-                    }
-                });
-        return fcmToken[0];
     }
 
 
@@ -206,11 +210,14 @@ public class OpenGamesActivity extends AppCompatActivity {
                 // Start activity to join lobby
                 Intent intent = new Intent(OpenGamesActivity.this, LobbyActivity.class);
                 intent.putExtra("lobbyId", lobby.getId());
-                intent.putExtra("guestFcmToken", getFcmToken());
                 intent.putExtra("isHost", false);
                 intent.putExtra("hostUsername", lobby.getHostUsername());
                 intent.putExtra("lobbyName", lobby.getName());
-                intent.putExtra("guestUsername", auth.getCurrentUser().getDisplayName());
+                if(auth.getCurrentUser().getDisplayName() == null){
+                    intent.putExtra("guestUsername", shared.getString("username", "User"));
+                }else{
+                    intent.putExtra("guestUsername", auth.getCurrentUser().getDisplayName());
+                }
                 startActivity(intent);
             }
         }

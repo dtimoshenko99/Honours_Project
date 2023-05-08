@@ -1,5 +1,6 @@
 package abertay.uad.ac.uk.myapplication;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
@@ -12,22 +13,33 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.annotations.Nullable;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 public class LobbyActivity extends AppCompatActivity {
 
+    private boolean isHost;
+    private String TAG = "onTap";
     private boolean opponentReady, hostReady;
-    private TextView opponent, user, lobbyFieldName, opponentFieldReady, userFieldReady;
+    FirebaseAuth authFirebase;
+    FirebaseUser userFirebase;
+    private TextView opponentUsername, user, lobbyFieldName, opponentFieldReady, userFieldReady;
     private String lobbyId;
     private FirebaseFirestore db;
-    private String guestFcmToken;
     private Button readyButton, leaveButton;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,36 +49,50 @@ public class LobbyActivity extends AppCompatActivity {
         opponentFieldReady = findViewById(R.id.opponentReady);
         userFieldReady = findViewById(R.id.userReady);
         readyButton = findViewById(R.id.readyButton);
-        // TODO: change button
         leaveButton = findViewById(R.id.button3);
         lobbyFieldName = findViewById(R.id.lobbyActivityName);
-        opponent = findViewById(R.id.opponentUsername);
+        opponentUsername = findViewById(R.id.opponentUsername);
         user = findViewById(R.id.playerOneUsername);
         Intent intent = getIntent();
         intent.getExtras();
-        boolean isHost = intent.getBooleanExtra("isHost", true);
+        isHost = intent.getBooleanExtra("isHost", true);
+
+        authFirebase = FirebaseAuth.getInstance();
+        userFirebase = authFirebase.getCurrentUser();
 
         readyButton.setOnClickListener(v -> {
-            userFieldReady.setText("Yes");
+            Log.d(TAG, "onCreate: IsHost " + isHost);
             updateDB(isHost);
         });
         getDataAssignListeners(intent,isHost);
 
+        leaveButton.setOnClickListener(v -> {
+            if(isHost){
+                deleteLobbyAndLeave();
+            }else{
+                updateFieldsAndLeave();
+            }
+        });
 
     }
+
+
 
     private void updateDB(boolean isHost) {
         String updateField;
         if(isHost){
             updateField = "hostReady";
+            Log.d(TAG, "updateDB: IsHOstReady");
         }else{
-            updateField = "guestReady";
+            Log.d(TAG, "updateDB: IsOpponentReady");
+            updateField = "opponentReady";
         }
         db.collection("lobbies").document(lobbyId)
                 .update(updateField, true)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void unused) {
+                        userFieldReady.setText("Yes");
                         Log.d("onTap", "onSuccess: UpdatedSuccessReady");
                     }
                 });
@@ -74,94 +100,61 @@ public class LobbyActivity extends AppCompatActivity {
 
     private void getDataAssignListeners(Intent intent,boolean isHost) {
         if(!isHost){
-            guestFcmToken = intent.getStringExtra("guestFcmToken");
+
             lobbyId = intent.getStringExtra("lobbyId");
             String lobbyName = intent.getStringExtra("lobbyName");
             String hostUsername = intent.getStringExtra("hostUsername");
             String guestUsername = intent.getStringExtra("guestUsername");
+            Log.d(TAG, "getDataAssignListeners: " + hostUsername + " " + guestUsername);
+            Log.d(TAG, "getDataAssignListeners: lobbyName: " + lobbyName + " " + lobbyId);
             userFieldReady.setText("No");
-            opponent.setText(hostUsername);
+            opponentUsername.setText(hostUsername);
             user.setText(guestUsername);
             lobbyFieldName.setText(lobbyName);
-            updateLobbyInfo(lobbyId);
-            db.collection("lobbies").document(lobbyId).get()
-                    .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+
+            Map<String, Object> lobbyData = new HashMap<>();
+            lobbyData.put("currentPlayers", 2);
+            lobbyData.put("opponentReady", false);
+            lobbyData.put("guestUsername", guestUsername);
+            lobbyData.put("opponentJoined", true);
+
+            db.collection("lobbies").document(lobbyId).update(lobbyData)
+                    .addOnSuccessListener(new OnSuccessListener<Void>() {
                         @Override
-                        public void onSuccess(DocumentSnapshot documentSnapshot) {
-                            if(documentSnapshot.get("hostReady").equals("yes")){
-                                opponentFieldReady.setText("Yes");
-                            }else{
-                                databaseReadyListener();
-                            }
+                        public void onSuccess(Void unused) {
+                            Log.d(TAG, "onSuccess: UpdatedOnJoin");
+                            db.collection("lobbies").document(lobbyId).get()
+                                    .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                                        @Override
+                                        public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                            if(documentSnapshot.getBoolean("hostReady")){
+                                                opponentFieldReady.setText("Yes");
+                                            }else{
+                                                opponentFieldReady.setText("No");
+                                                databaseReadyListener();
+                                            }
+
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Log.d("onTap", "onFailure: Something failed" + e);
+                                }
+                            });
                         }
-                    }).addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(Exception e) {
-                    Log.d("onTap", "onFailure: Something failed" + e);
-                }
-            });
+                    });
+
         }else{
             lobbyId = intent.getStringExtra("lobbyId");
             lobbyFieldName.setText(intent.getStringExtra("lobbyName"));
             user.setText(intent.getStringExtra("hostUsername"));
             userFieldReady.setText("No");
             opponentFieldReady.setText("No");
-            opponent.setText("Waiting...");
-            databaseListeners();
+            opponentUsername.setText("Waiting...");
+            databaseReadyListener();
         }
     }
 
-    private void databaseListeners(){
-        DocumentReference lobbyRef = db.collection("lobbies").document(lobbyId);
-
-// Add a listener to the document to check if the opponent has joined the lobby
-        lobbyRef.addSnapshotListener((snapshot, e) -> {
-            if (e != null) {
-                Log.w("onTap", "Listen failed.", e);
-                return;
-            }
-
-            if (snapshot != null && snapshot.exists()) {
-                boolean opponentJoined = snapshot.getBoolean("opponentJoined");
-                if (opponentJoined) {
-                    Log.d("onTap", "Opponent has joined the lobby");
-                    db.collection("lobbies").document(lobbyId).get()
-                            .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                                @Override
-                                public void onComplete(Task<DocumentSnapshot> task) {
-                                    opponent.setText(task.getResult().getString("guestUsername"));
-                                    db.collection("lobbies").document(lobbyId).update("opponentJoined", true)
-                                            .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                                @Override
-                                                public void onSuccess(Void unused) {
-                                                    Log.d("onTap", "onSuccess: Success udpate OpponentJoined");
-                                                    databaseReadyListener();
-                                                }
-                                            }).addOnFailureListener(new OnFailureListener() {
-                                        @Override
-                                        public void onFailure(Exception e) {
-                                            Log.d("onTap", "onFailure: Failed update");
-                                        }
-                                    });
-
-                                }
-                            }).addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(Exception e) {
-                            opponent.setText("Noname");
-                        }
-                    });
-
-                } else {
-                    Log.d("onTap", "Opponent has not joined the lobby yet");
-                    // Update UI accordingly
-                    opponent.setText("Not Joined");
-                }
-            } else {
-                Log.d("onTap", "Current data: null");
-            }
-        });
-    }
     private void databaseReadyListener(){
 
         DocumentReference lobbyRef = db.collection("lobbies").document(lobbyId);
@@ -174,13 +167,34 @@ public class LobbyActivity extends AppCompatActivity {
             }
 
             if (snapshot != null && snapshot.exists()) {
+                hostReady = snapshot.getBoolean("hostReady");
                 opponentReady = snapshot.getBoolean("opponentReady");
 
-                if (opponentReady) {
-                    // TODO: send message here FCM
-                    opponentFieldReady.setText("Yes");
+                if (opponentReady && hostReady) {
+                    if(isHost){
+                        deleteLobbyAndCreateGame();
+                    }
+                    Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
+                    intent.putExtra("lobbyId", lobbyId);
+                    if(isHost){
+                        intent.putExtra("hostUserId", userFirebase);
+                    }else{
+                        intent.putExtra("guestUserId", userFirebase);
+                    }
+                    startActivity(intent);
+                    finish();
+                }else if (opponentReady) {
+                    // Guest is ready, host is not
+                    opponentFieldReady.setText("Ready");
+                    userFieldReady.setText("Not ready");
+                } else if (hostReady) {
+                    // Host is ready, guest is not
+                    opponentFieldReady.setText("Not ready");
+                    userFieldReady.setText("Ready");
                 } else {
-                   opponentFieldReady.setText("No");
+                    // Neither player is ready
+                    opponentFieldReady.setText("Not ready");
+                    userFieldReady.setText("Not ready");
                 }
             } else {
                 Log.d("onTap", "Current data: null");
@@ -188,30 +202,65 @@ public class LobbyActivity extends AppCompatActivity {
         });
     }
 
+    private void deleteLobbyAndCreateGame(){
 
-
-
-    private void updateLobbyInfo(String lobbyId) {
-        db = FirebaseFirestore.getInstance();
+        Map<String, Object> gameData = new HashMap<>();
+        gameData.put("lobbyId", lobbyId);
+        gameData.put("player1", "Red");
+        gameData.put("player2", "Black");
+        gameData.put("state", "started");
 
         db.collection("lobbies").document(lobbyId)
-                .update("guestFcmToken", guestFcmToken)
+                .delete()
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        db.collection("games").document()
+                                .set(gameData)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        Log.d(TAG, "onComplete: deleted lobby, created a game");
+                                    }
+                                });
+                    }
+                });
+    }
+
+    private void updateFieldsAndLeave() {
+        Map<String, Object> lobbyData = new HashMap<>();
+        lobbyData.put("currentPlayers", 1);
+        lobbyData.put("opponentReady", false);
+        lobbyData.put("opponentJoined", false);
+        db.collection("lobbies").document(lobbyId)
+                .update(lobbyData)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void unused) {
-                        Log.d("onTap", "onSuccess: updated" );
+                        Log.d(TAG, "onSuccess: Left and updated fields");
+                        Intent intent = new Intent(LobbyActivity.this, OpenGamesActivity.class);
+                        startActivity(intent);
                     }
-                }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(Exception e) {
-                Log.d("onTap", "onFailure: failed");
-            }
-        });
+                });
     }
-//        FirebaseMessaging.getInstance().send(new RemoteMessage.Builder("your-sender-id@fcm.googleapis.com")
-//                .setMessageId(Integer.toString(msgId.incrementAndGet()))
-//                .addData("lobbyId", lobbyId)
-//                .addData("gameType", gameType)
-//                .addData("otherData", otherData)
-//                .build());
+
+    private void deleteLobbyAndLeave() {
+        Log.d(TAG, "deleteLobbyAndLeave: " + lobbyId);
+        db.collection("lobbies").whereEqualTo("id", lobbyId).get()
+                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                    @Override
+                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                        List<DocumentSnapshot> doc =  queryDocumentSnapshots.getDocuments();
+                        Log.d(TAG, "onSuccess: " + doc);
+                        String id = doc.get(0).getId();
+                        db.collection("lobbies").document(id).delete();
+                        startActivity(new Intent(LobbyActivity.this, OpenGamesActivity.class));
+                    }
+                });
     }
+
+    @Override
+    public void onBackPressed() {
+        // TODO: Dialog : really want to leave this lobby?
+    }
+}

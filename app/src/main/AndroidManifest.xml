@@ -16,21 +16,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
-        <service
-            android:name=".CustomFirebaseMessaging"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.INSTANCE_ID_EVENT"/>
-            </intent-filter>
-        </service>
 
-        <service
-            android:name=".CustomFirebaseMessaging"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.INSTANCE_ID_EVENT"/>
-            </intent-filter>
-        </service>
         <activity
             android:name=".LobbyActivity"
             android:exported="false" />
@@ -42,6 +28,8 @@
             android:exported="false" />
         <activity
             android:name=".MainMenuActivity"
+            android:exported="false" />
+        <activity android:name=".MultiPlayerActivity"
             android:exported="false" />
         <activity
             android:name=".EndGameActivity"
@@ -85,7 +73,7 @@
             android:configChanges="orientation|screenSize"
             android:exported="true"
             android:screenOrientation="locked"
-            android:theme="@style/Theme.AppCompat.NoActionBar"/>
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
 
         <meta-data
             android:name="com.google.ar.core"

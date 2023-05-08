@@ -34,7 +34,7 @@ public class SinglePlayerActivity extends AppCompatActivity implements
         OnPieceTouchListener
 {
 
-    private final String  TAG = "onTap";
+    private final String  gameType = "SinglePlayer";
 
     GameInit gameInitialization;
     GameTurnManager turnManager;
@@ -67,9 +67,9 @@ public class SinglePlayerActivity extends AppCompatActivity implements
             arFragment.setOnTapArPlaneListener(this);
         }
         turnManager = new GameTurnManager(this);
-        gameInitialization = new GameInit(this, arFragment, turnManager, this);
+        gameInitialization = new GameInit(this, arFragment, turnManager, this, gameType);
         gameInitialization.loadModels();
-        gameLogic = new GameLogic(turnManager, gameInitialization);
+        gameLogic = new GameLogic(turnManager, gameInitialization, null);
     }
 
     @Override
@@ -89,9 +89,6 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
     @Override
     public void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
-        Log.d(TAG, "onTapPlane: " + hitResult);
-        Log.d(TAG, "onTapPlane: Distance: " + hitResult.getDistance());
-        Log.d(TAG, "onTapPlane: HitPose: " + hitResult.getHitPose());
         gameInitialization.createAnchors(hitResult, arFragment);
     }
 

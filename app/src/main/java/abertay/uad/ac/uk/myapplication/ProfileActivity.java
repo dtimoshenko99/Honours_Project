@@ -89,7 +89,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void deleteUserandGames() {
-        firestoreDB.collection("users").whereEqualTo("username", usernamePreferences).get()
+        firestoreDB.collection("users").whereEqualTo("email", emailPreferences).get()
                 .addOnCompleteListener(task -> {
                     if(task.isSuccessful()){
                         QuerySnapshot doc = task.getResult();
@@ -138,7 +138,7 @@ public class ProfileActivity extends AppCompatActivity {
                QuerySnapshot snap = idTask.getResult();
                uid = snap.getDocuments().get(0).getId();
 
-               firestoreDB.collection("users").document(uid).set(map, SetOptions.merge()).addOnSuccessListener(unused -> {
+               firestoreDB.collection("users").document(uid).set(map).addOnSuccessListener(unused -> {
                    Toast.makeText(ProfileActivity.this, "Username updated", Toast.LENGTH_LONG);
                    startActivity(new Intent(this, MainMenuActivity.class));
                });
