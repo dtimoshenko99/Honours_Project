@@ -10,7 +10,6 @@ import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.ux.TransformableNode;
-import com.google.rpc.Help;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +26,8 @@ public class GameLogic {
     public String winner;
     private int middleRow, middleCol;
     private int capturedRed, capturedBlack;
+    List<int[]> capturePositions = new ArrayList<>();
+    List<TransformableNode> nodesToExclude = new ArrayList<>();
 
     // Variables to hold state of the game
     private boolean lastTurnWasCapture = false;
@@ -83,23 +84,28 @@ public class GameLogic {
                 gameInit.redHighlightNode.setEnabled(true);
                 gameInit.redHighlightNode.setWorldPosition(new Vector3(pickUpPosition.x, pickUpPosition.y - 0.02f, pickUpPosition.z));
                 wronglyPlacedPiece = true;
+                Toast.makeText(gameInit.getContext(), "This is not a valid move, please place the piece back.", Toast.LENGTH_SHORT).show();
 
             }else if(colAndRow[1] == returnTo[0] && colAndRow[0] == returnTo[1] && wronglyPlacedPiece){
                 gameInit.redHighlightNode.setEnabled(false);
                 returnTo[0] = 0;
                 returnTo[1] = 0;
                 wronglyPlacedPiece = false;
+                Toast.makeText(gameInit.getContext(), "Thank you.", Toast.LENGTH_SHORT).show();
             }
 
         }else if(!wronglyPlacedPiece){
             gameInit.redHighlightNode.setEnabled(false);
-
+            capturePositions.clear();
+            for(TransformableNode node : gameInit.greenHighlightArray){
+                node.setEnabled(false);
+            }
             if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
                 selectedNode.setWorldPosition(worldSquarePos);
                 updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
             }else {
                 userHasCaptures = false;
-                gameInit.greenHighlightNode.setEnabled(false);
+
                 // Does have one more to capture, but updating board anyway, as the turn wast taken
                 // Update board array
                 selectedNode.setWorldPosition(worldSquarePos);
@@ -110,7 +116,6 @@ public class GameLogic {
 
                 // Update textview with the text of whose turn it is
                 turnManager.updateTurnIndicator();
-
                 checkForAvailableCapturesOnStartTurn();
 
                 if(helperFunctions.isGameOver(gameInit.getBoardArray())){
@@ -124,14 +129,27 @@ public class GameLogic {
     }
 
     public void checkForAvailableCapturesOnStartTurn(){
-        List<int[]> capturePositions = helperFunctions.getCapturePositions(turnManager.currentPlayer);
+        capturePositions = helperFunctions.getCapturePositions(turnManager.currentPlayer);
+        List<Vector3> turnPos = new ArrayList<>();
 
-        if(!capturePositions.isEmpty()){
+        if(!capturePositions.isEmpty()) {
             for (int[] position : capturePositions) {
-                Log.d(TAG, "checkAndUpdate: " +Arrays.toString(position));
-                int row = position[0];
-                int col = position[1];
-
+                Log.d(TAG, "checkAndUpdate: " + Arrays.toString(position));
+                int currentRow = position[2];
+                int currentCol = position[3];
+                TransformableNode[][] nodeArray = gameInit.getNodesArray();
+                nodesToExclude.add(nodeArray[currentRow][currentCol]);
+                Vector3 squarePos = helperFunctions.getSquarePosition(position[1], position[0], gameInit.getSquareWorldPositions());
+                if (squarePos != null) {
+                    turnPos.add(squarePos);
+                }
+            }
+            helperFunctions.updateNodes(nodesToExclude);
+            if (!turnPos.isEmpty()) {
+                for (int i = 0; i < turnPos.size(); i++) {
+                    gameInit.greenHighlightArray[i].setEnabled(true);
+                    gameInit.greenHighlightArray[i].setWorldPosition(turnPos.get(i));
+                }
             }
             Log.d(TAG, "checkAndUpdate: " + (capturePositions));
         }
@@ -254,7 +272,11 @@ public class GameLogic {
                     // Check if the adjacent square contains an opponent's piece and if the capture square is empty
                     if (middlePiece == opponentPiece && boardArray[newRow][newCol] == 0 && lastTurnWasCapture) {
                         userHasCaptures = true;
-                        helperFunctions.updateNodes(node);
+                        nodesToExclude.clear();
+                        nodesToExclude.add(node);
+                        helperFunctions.updateNodes(nodesToExclude);
+                        gameInit.greenHighlightNode.setEnabled(true);
+                        gameInit.greenHighlightNode.setWorldPosition(helperFunctions.getSquarePosition(newRow, newCol, gameInit.getSquareWorldPositions()));
                         captureAt[0] = newRow;
                         captureAt[1] = newCol;
                         return true;
@@ -269,11 +291,36 @@ public class GameLogic {
         int[][] boardArray = gameInit.getBoardArray();
         int rowDiff = Math.abs(destRow - initialRow);
         int colDiff = Math.abs(destCol - initialCol);
+        middleRow = (initialRow + destRow) / 2;
+        middleCol = (initialCol + destCol) / 2;
         int opponentPiece;
         if(node.getName().equals("redPiece")){
             opponentPiece = 1;
         }else{
             opponentPiece = 2;
+        }
+
+        if(!capturePositions.isEmpty()){
+            for(int[] captures : capturePositions){
+                if(captures[0] == destCol && captures[1] == destRow) {
+                    captured = true;
+                    lastTurnWasCapture = true;
+                    Log.d(TAG, "isValidMove: Get middle and delete");
+                    TransformableNode[][] nodeArray = gameInit.getNodesArray();
+                    helperFunctions.removePieceFromScene(nodeArray[middleRow][middleCol]);
+                    if(opponentPiece == 1){
+                        capturedRed += 1;
+                    }else{
+                        capturedBlack += 1;
+                    }
+                    return true;
+                }
+            }
+            if(rowDiff == 0 && colDiff == 0){
+                samePlace = true;
+                return false;
+            }
+            return false;
         }
 
         if(userHasCaptures && destCol != captureAt[1] && destRow != captureAt[0]){
@@ -318,8 +365,6 @@ public class GameLogic {
 
         // If the move is 2 squares long, check if the player can capture the piece
         if (rowDiff == 2 && colDiff == 2) {
-            middleRow = (initialRow + destRow) / 2;
-            middleCol = (initialCol + destCol) / 2;
 
 
             // Check if the piece in the middle square belongs to the opponent

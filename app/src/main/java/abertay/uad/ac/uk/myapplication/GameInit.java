@@ -41,7 +41,8 @@ public class GameInit {
     private Anchor mainAnchor;
     private Node boardNode;
     private AnchorNode anchorNode;
-    public TransformableNode redHighlightNode, greenHighlightNode;
+    public TransformableNode redHighlightNode, greenHighlightNode, secondGreenHighlightNode, thirdGreenHighlightNode, fourthGreenHighlightNode;
+    public TransformableNode[] greenHighlightArray = new TransformableNode[4];
     GameTurnManager turnManager;
     private OnPieceTouchListener onPieceTouchListener;
     private TransformableNode[][] nodesArray;
@@ -155,8 +156,47 @@ public class GameInit {
                     greenHighlightNode.setParent(highlightAnchorNode);
                     greenHighlightNode.setRenderable(cubeRenderable);
                     greenHighlightNode.setEnabled(false);
+                    greenHighlightArray[0] = greenHighlightNode;
                 });
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+                .thenAccept(material -> {
+                    cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
 
+                    // Attach the cube renderable to the anchor node at the position of the highlighted square
+                    AnchorNode highlightAnchorNode = new AnchorNode(mainAnchor);
+                    highlightAnchorNode.setParent(arFragment.getArSceneView().getScene());
+                    secondGreenHighlightNode = new TransformableNode(arFragment.getTransformationSystem());
+                    secondGreenHighlightNode.setParent(highlightAnchorNode);
+                    secondGreenHighlightNode.setRenderable(cubeRenderable);
+                    secondGreenHighlightNode.setEnabled(false);
+                    greenHighlightArray[1] = secondGreenHighlightNode;
+                });
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+                .thenAccept(material -> {
+                    cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
+
+                    // Attach the cube renderable to the anchor node at the position of the highlighted square
+                    AnchorNode highlightAnchorNode = new AnchorNode(mainAnchor);
+                    highlightAnchorNode.setParent(arFragment.getArSceneView().getScene());
+                    thirdGreenHighlightNode = new TransformableNode(arFragment.getTransformationSystem());
+                    thirdGreenHighlightNode.setParent(highlightAnchorNode);
+                    thirdGreenHighlightNode.setRenderable(cubeRenderable);
+                    thirdGreenHighlightNode.setEnabled(false);
+                    greenHighlightArray[2] = thirdGreenHighlightNode;
+                });
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+                .thenAccept(material -> {
+                    cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
+
+                    // Attach the cube renderable to the anchor node at the position of the highlighted square
+                    AnchorNode highlightAnchorNode = new AnchorNode(mainAnchor);
+                    highlightAnchorNode.setParent(arFragment.getArSceneView().getScene());
+                    fourthGreenHighlightNode = new TransformableNode(arFragment.getTransformationSystem());
+                    fourthGreenHighlightNode.setParent(highlightAnchorNode);
+                    fourthGreenHighlightNode.setRenderable(cubeRenderable);
+                    fourthGreenHighlightNode.setEnabled(false);
+                    greenHighlightArray[3] = fourthGreenHighlightNode;
+                });
     }
 
 

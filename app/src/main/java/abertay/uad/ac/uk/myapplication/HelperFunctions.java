@@ -9,7 +9,7 @@ import com.google.ar.sceneform.ux.TransformableNode;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HelperFunctions {
+public class HelperFunctions{
     GameInit gameInit;
     GameLogic gameLogic;
 
@@ -23,7 +23,6 @@ public class HelperFunctions {
         int[] rowOffsets = {-1, -1, 1, 1};
         int[] colOffsets = {-1, 1, -1, 1};
         int[][] boardArray = gameInit.getBoardArray();
-        TransformableNode[][] nodeArray = gameInit.getNodesArray();
         int currentPiece;
         int opponentPiece;
 
@@ -61,19 +60,23 @@ public class HelperFunctions {
         return capturePositions;
     }
 
-    void updateNodes(TransformableNode node){
+    void updateNodes(List<TransformableNode> nodesToExclude) {
         TransformableNode[][] nodeArray = gameInit.getNodesArray();
 
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
-                Log.d("onTap", "updateNodes: col + row " + col + " " + row);
-                if (node != nodeArray[row][col] && nodeArray[row][col] != null) {
-                    Log.d("onTap", "updateNodes: col + row " + col + " " + row);
+                TransformableNode node = nodeArray[row][col];
+                if (node != null && !nodesToExclude.contains(node)) {
                     // Set setSelectable property to false for this node
-                    nodeArray[row][col].setSelectable(false);
+                    node.setSelectable(false);
                 }
             }
         }
+    }
+
+    public  Vector3 getSquarePosition(int row, int col, List<Vector3> squareWorldPositions) {
+        int index = row * 8 + col;
+        return squareWorldPositions.get(index);
     }
 
     // Function to remove a piece from a scene

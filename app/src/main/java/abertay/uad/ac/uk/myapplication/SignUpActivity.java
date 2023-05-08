@@ -80,6 +80,7 @@ public class SignUpActivity extends AppCompatActivity {
         String passwordText = password.getText().toString();
         String confPasswordText = confPassword.getText().toString();
 
+        // TODO: DOn't forget about these
 //        if(!emailText.matches(emailPatt)){
 //            email.setError("Please enter correct email.");
 //        }else if(passwordText.isEmpty()){
