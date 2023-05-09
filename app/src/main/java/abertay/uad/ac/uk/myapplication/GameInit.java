@@ -249,15 +249,15 @@ public class GameInit {
             // Disable white dots which show the place on the plane that the board can be placed on
             arFragment.getArSceneView().getPlaneRenderer().setVisible(false);
 
-            // Colour the pieces into black
-//            Material material = blackPieces.getMaterial();
-//            material.setFloat4("baseColorTint", new Color(android.graphics.Color.BLACK));
             // Populate the board with pieces
             populateBoard();
 
+            if(!gameType.equals("MultiPlayer")){
+                turnManager.switchTurnAndUpdateSelectableNodes(arFragment);
+                turnManager.updateTurnIndicator();
+            }
             //Decide who plays first and update Node's selectivity
-            turnManager.switchTurnAndUpdateSelectableNodes(arFragment);
-            turnManager.updateTurnIndicator();
+
         } else {
             Toast.makeText(context, "The board is already placed, you can change the position by moving the board", Toast.LENGTH_LONG).show();
         }

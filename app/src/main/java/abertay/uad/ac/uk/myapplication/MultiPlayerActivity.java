@@ -11,8 +11,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.ar.core.Config;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
@@ -24,6 +22,8 @@ import com.google.ar.sceneform.SceneView;
 import com.google.ar.sceneform.Sceneform;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.BaseArFragment;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 public class MultiPlayerActivity extends AppCompatActivity implements
@@ -40,10 +40,11 @@ public class MultiPlayerActivity extends AppCompatActivity implements
     GameInit gameInitialization;
     GameTurnManager turnManager;
     GameLogic gameLogic;
-    GameDatabaseManipulations dbManipulations;
+    MultiplayerGameLogic multiplayerGameLogic;
     FirebaseFirestore db;
     private ArFragment arFragment;
-    private String lobbyId, hostUserId, guestUserId;
+    public String lobbyId, hostUserId, guestUserId;
+    public boolean isHost;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,10 +56,16 @@ public class MultiPlayerActivity extends AppCompatActivity implements
         lobbyId = intent.getStringExtra("lobbyId");
         if(intent.getStringExtra("hostUserId") != null){
             hostUserId = intent.getStringExtra("hostUserId");
+            isHost = true;
         }else{
             guestUserId = intent.getStringExtra("guestUserId");
+            isHost = false;
         }
 
+        Log.d("onTap", "onCreate: " + lobbyId);
+        Log.d("onTap", "onCreate: " + hostUserId);
+        Log.d("onTap", "onCreate: " + guestUserId);
+        Log.d("onTap", "onCreate: " + isHost);
 
         getSupportFragmentManager().addFragmentOnAttachListener(this);
 
@@ -69,12 +76,6 @@ public class MultiPlayerActivity extends AppCompatActivity implements
                         .commit();
             }
         }
-    }
-
-
-    @Override
-    public boolean onPieceTouch(HitTestResult hitTestResult, MotionEvent motionEvent) {
-        return gameLogic.onTouchMethod(hitTestResult, motionEvent);
     }
 
     @Override
@@ -88,9 +89,11 @@ public class MultiPlayerActivity extends AppCompatActivity implements
         turnManager = new GameTurnManager(this);
         gameInitialization = new GameInit(this, arFragment, turnManager, this, gameType);
         gameInitialization.loadModels();
-        dbManipulations = new GameDatabaseManipulations(db, lobbyId);
-        gameLogic = new GameLogic(turnManager, gameInitialization, dbManipulations);
+        gameLogic = new GameLogic(turnManager, gameInitialization);
+        Log.d("onTap", "onAttachFragment: initializing MGameLogic");
+        multiplayerGameLogic = new MultiplayerGameLogic(turnManager, gameLogic, gameInitialization, db, lobbyId, isHost);
     }
+
 
     @Override
     public void onViewCreated(ArSceneView arSceneView) {
@@ -110,10 +113,24 @@ public class MultiPlayerActivity extends AppCompatActivity implements
     @Override
     public void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
         gameInitialization.createAnchors(hitResult, arFragment);
+        String userId;
+
+        if(!isHost){
+            userId = guestUserId;
+        }else{
+            userId = hostUserId;
+        }
+        Log.d("onTap", "onTapPlane: TAP ON PLANE");
+        multiplayerGameLogic.gameStart(userId, gameInitialization.getBoardArray(), gameInitialization.getNodesArray());
     }
 
     @Override
     public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
 
+    }
+
+    @Override
+    public boolean onPieceTouch(HitTestResult hitTestResult, MotionEvent motionEvent) {
+        return multiplayerGameLogic.onTouchMethodMultiplayer(hitTestResult, motionEvent);
     }
 }

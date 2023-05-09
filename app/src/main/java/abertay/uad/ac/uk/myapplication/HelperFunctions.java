@@ -182,4 +182,37 @@ public class HelperFunctions{
 
     }
 
+    public List<Integer> translateBoardArrayToList(int[][] boardArray) {
+        List<Integer> occupiedSquares = new ArrayList<>();
+
+        for (int i = 0; i < boardArray.length; i++) {
+            for (int j = 0; j < boardArray[i].length; j++) {
+                if (boardArray[i][j] != 0) { // Square is occupied
+                    int squareNumber = i * boardArray.length + j; // Calculate square number
+                    occupiedSquares.add(squareNumber);
+                }
+            }
+        }
+
+        return occupiedSquares;
+    }
+
+    public List<Integer> translateNodeArrayToList(TransformableNode[][] nodesArray) {
+        List<Integer> occupiedSquares = new ArrayList<>();
+
+        // Iterate through all nodes in the array
+        for (int i = 0; i < nodesArray.length; i++) {
+            for (int j = 0; j < nodesArray[i].length; j++) {
+                TransformableNode node = nodesArray[i][j];
+                if (node != null && node.isEnabled()) {
+                    // If the node is enabled, add its square number to the list
+                    int squareNumber = i * nodesArray.length + j;
+                    occupiedSquares.add(squareNumber);
+                }
+            }
+        }
+
+        return occupiedSquares;
+    }
+
 }

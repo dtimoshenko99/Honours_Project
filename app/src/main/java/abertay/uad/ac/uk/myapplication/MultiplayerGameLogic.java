@@ -1,28 +1,35 @@
 package abertay.uad.ac.uk.myapplication;
 
+
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.ux.TransformableNode;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class GameLogic {
-
+public class MultiplayerGameLogic {
+    public boolean isHost;
+    private GameTurnManager turnManager;
+    private GameLogic gameLogic;
+    private GameInit gameInit;
+    private GameDatabaseManipulations databaseManipulations;
+    public HelperFunctions helperFunctions;
     private boolean nodeSelected = false;
     private TransformableNode selectedNode;
     private Vector3 pickUpPosition;
-    private final GameTurnManager turnManager;
-    private HelperFunctions helperFunctions;
-    private final GameInit gameInit;
     public String winner;
     private int middleRow, middleCol;
     private int capturedRed, capturedBlack;
@@ -38,13 +45,28 @@ public class GameLogic {
     private int[] captureAt = new int[2];
     private int[] returnTo = new int[2];
 
-
     private final String TAG = "onTap";
 
-    public GameLogic(GameTurnManager turnManager, GameInit gameInit) {
+    public MultiplayerGameLogic(GameTurnManager turnManager, GameLogic gameLogic, GameInit gameInit, FirebaseFirestore db, String lobby, boolean isHost){
         this.turnManager = turnManager;
+        this.isHost = isHost;
+        this.gameLogic = gameLogic;
         this.gameInit = gameInit;
-        this.helperFunctions = new HelperFunctions(gameInit, this);
+        this.databaseManipulations = new GameDatabaseManipulations(db, lobby, gameInit, this);
+        this.helperFunctions = new HelperFunctions(gameInit, gameLogic);
+
+    }
+
+    public void gameStart(String userId, int[][] boardArray, TransformableNode[][] nodesArray) {
+        // Update database with User ID and
+
+        databaseManipulations.updateBoardPlacedField(isHost, boardArray, nodesArray);
+        Log.d(TAG, "gameStart: Updated Boardplaced Field");
+        if(databaseManipulations.bothBoardsPlaced){
+            turnManager.updateSelectableNodesForMultiPlayer(gameInit.getArFragment(), turnManager.currentPlayer.getNodeName());
+            turnManager.updateTurnIndicatorMultiplayer(isHost);
+        }
+        // This needs to be set every time the user's turn ends
     }
 
     public void setWinner(String winner){
@@ -53,12 +75,12 @@ public class GameLogic {
 
     private List<Vector3> squareWorldPositions;
 
-    public void pieceDropped(TransformableNode node){
+    public void pieceDroppedMultiplayer(TransformableNode node){
 
         squareWorldPositions = gameInit.getSquareWorldPositions();
 
         Vector3 worldLastKnown = node.getWorldPosition();
-        Vector3 worldSquarePos = getClosestSquarePosition(worldLastKnown);
+        Vector3 worldSquarePos = gameLogic.getClosestSquarePosition(worldLastKnown);
 
         int[] colAndRow = HelperFunctions.getRowColFromWorldPosition(worldLastKnown, squareWorldPositions, 8,8);
         int[] pickupRowAndCol = HelperFunctions.getRowColFromWorldPosition(pickUpPosition, squareWorldPositions, 8,8);
@@ -102,6 +124,9 @@ public class GameLogic {
             if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
                 selectedNode.setWorldPosition(worldSquarePos);
                 updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
+
+                databaseManipulations.updateArrays(gameInit.getBoardArray(), gameInit.getNodesArray(), false, null);
+
             }else {
                 userHasCaptures = false;
 
@@ -109,12 +134,16 @@ public class GameLogic {
                 // Update board array
                 selectedNode.setWorldPosition(worldSquarePos);
                 // Switches the turn and updates the corresponding node's setSelectable value
-                turnManager.switchTurnAndUpdateSelectableNodes(gameInit.getArFragment());
+                turnManager.switchTurnAndUpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
                 // Update board array
                 updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
 
+
                 // Update textview with the text of whose turn it is
                 turnManager.updateTurnIndicator();
+
+                // TODO: UPdate in the database
+                databaseManipulations.updateArrays(gameInit.getBoardArray(), gameInit.getNodesArray(), true, turnManager.currentPlayer.getColor());
                 checkForAvailableCapturesOnStartTurn();
 
                 if(helperFunctions.isGameOver(gameInit.getBoardArray())){
@@ -156,7 +185,7 @@ public class GameLogic {
     }
 
 
-    public boolean onTouchMethod(HitTestResult hitTestResult, MotionEvent motionEvent){
+    public boolean onTouchMethodMultiplayer(HitTestResult hitTestResult, MotionEvent motionEvent){
         Node node = hitTestResult.getNode();
         if (node instanceof TransformableNode) {
             String nodeName = node.getName();
@@ -176,7 +205,7 @@ public class GameLogic {
 //                        isInsideBoard(selectedNode.getWorldPosition());
                         break;
                     case MotionEvent.ACTION_UP:
-                        pieceDropped(selectedNode);
+                        pieceDroppedMultiplayer(selectedNode);
                         nodeSelected = false;
                         break;
                 }
@@ -212,35 +241,11 @@ public class GameLogic {
         boardArray[destRow][destCol] = pieceValue;
         gameInit.setBoardArray(boardArray);
 
-//        gameDatabaseManipulations.updateArrays(boardArray, nodesArray);
+        // Update both arrays here
+
+//       gameDatabaseManipulations.updateArrays(boardArray, nodesArray);
 
     }
-
-
-
-    Vector3 getClosestSquarePosition(Vector3 pieceWorldPosition){
-        squareWorldPositions = gameInit.getSquareWorldPositions();
-        double threshold = 0.15;
-        Vector3 closestSquare;
-        //  squareLocalPositionsMap
-        for (Vector3 squareWorldPos : squareWorldPositions){
-
-            // Get distance between square and a piece position
-            double distance = Math.sqrt(Math.pow(pieceWorldPosition.x - squareWorldPos.x, 2)
-                    + Math.pow(pieceWorldPosition.y - squareWorldPos.y, 2)
-                    + Math.pow(pieceWorldPosition.z - squareWorldPos.z, 2));
-
-            if (distance < threshold){
-                // Should check which space
-                closestSquare = squareWorldPos;
-                return closestSquare;
-
-            }
-
-        }
-        return pickUpPosition;
-    }
-
 
     public boolean hasCaptures(int col, int row, TransformableNode node) {
         int[] rowOffsets = {-1, -1, 1, 1};
@@ -254,37 +259,37 @@ public class GameLogic {
             currentPiece = 1;
         }
 
-            // Iterate through all possible capture directions
-            for (int direction = 0; direction < rowOffsets.length; direction++) {
-                int newRow = row + 2 * rowOffsets[direction];
-                int newCol = col + 2 * colOffsets[direction];
-                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+        // Iterate through all possible capture directions
+        for (int direction = 0; direction < rowOffsets.length; direction++) {
+            int newRow = row + 2 * rowOffsets[direction];
+            int newCol = col + 2 * colOffsets[direction];
+            if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
 
-                    int midRow = row + rowOffsets[direction];
-                    int midCol = col + colOffsets[direction];
-                    int middlePiece = boardArray[midRow][midCol];
+                int midRow = row + rowOffsets[direction];
+                int midCol = col + colOffsets[direction];
+                int middlePiece = boardArray[midRow][midCol];
 
-                    if(currentPiece == 1){
-                        opponentPiece = 2;
-                    }else{
-                        opponentPiece = 1;
-                    }
-                    // Check if the adjacent square contains an opponent's piece and if the capture square is empty
-                    if (middlePiece == opponentPiece && boardArray[newRow][newCol] == 0 && lastTurnWasCapture) {
-                        userHasCaptures = true;
-                        nodesToExclude.clear();
-                        nodesToExclude.add(node);
-                        helperFunctions.updateNodes(nodesToExclude);
-                        gameInit.greenHighlightNode.setEnabled(true);
-                        gameInit.greenHighlightNode.setWorldPosition(helperFunctions.getSquarePosition(newRow, newCol, gameInit.getSquareWorldPositions()));
-                        captureAt[0] = newRow;
-                        captureAt[1] = newCol;
-                        return true;
-                    }
+                if(currentPiece == 1){
+                    opponentPiece = 2;
+                }else{
+                    opponentPiece = 1;
                 }
-
+                // Check if the adjacent square contains an opponent's piece and if the capture square is empty
+                if (middlePiece == opponentPiece && boardArray[newRow][newCol] == 0 && lastTurnWasCapture) {
+                    userHasCaptures = true;
+                    nodesToExclude.clear();
+                    nodesToExclude.add(node);
+                    helperFunctions.updateNodes(nodesToExclude);
+                    gameInit.greenHighlightNode.setEnabled(true);
+                    gameInit.greenHighlightNode.setWorldPosition(helperFunctions.getSquarePosition(newRow, newCol, gameInit.getSquareWorldPositions()));
+                    captureAt[0] = newRow;
+                    captureAt[1] = newCol;
+                    return true;
+                }
             }
-            return false;
+
+        }
+        return false;
     }
 
     private boolean isValidMove(int initialCol, int initialRow, int destCol, int destRow, Node node) {
@@ -334,7 +339,7 @@ public class GameLogic {
             samePlace = true;
             return false;
         }
-        
+
         // Check if the move is diagonal
         if (rowDiff != colDiff) {
             Log.d(TAG, "isValidMove: Move is not diagonal");
@@ -390,10 +395,14 @@ public class GameLogic {
                 return true;
             }
         }
-            lastTurnWasCapture = false;
-            return true;
+        lastTurnWasCapture = false;
+        return true;
 
     }
 
+    // TODO: need to update the board
+    public void updateBoard(int[][] boardArray, TransformableNode[][] nodesArray){
+
+    }
 
 }

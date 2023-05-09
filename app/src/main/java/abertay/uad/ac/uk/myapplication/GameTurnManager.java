@@ -31,6 +31,7 @@ public class GameTurnManager {
         public String getColor(){ return color;}
     }
 
+    public boolean isHost;
     public Player currentPlayer;
     private Context context;
 
@@ -99,9 +100,49 @@ public class GameTurnManager {
 
     }
 
+    public void updateSelectableNodesForMultiPlayer(ArFragment arFragment, String currentTurnPlayerNodeName) {
+        // Iterate through all nodes in the scene
+        for (Node node : arFragment.getArSceneView().getScene().getChildren()) {
+            // Check if the node is a TransformableNode
+            if (node instanceof TransformableNode) {
+                TransformableNode transformableNode = (TransformableNode) node;
+
+                // If it is not the current turn player's turn, make all nodes not selectable
+                if (!transformableNode.getName().equals(currentTurnPlayerNodeName)) {
+                    transformableNode.setSelectable(false);
+                } else {
+                    // If the node's name matches the current turn player's name, make it selectable
+                    transformableNode.setSelectable(true);
+                }
+            }
+            // Iterate the hierarchy
+            for (Node node1 : node.getChildren()) {
+                // Check if the node is a TransformableNode
+                if (node1 instanceof TransformableNode) {
+                    TransformableNode transformableNode = (TransformableNode) node1;
+
+                    // If it is not the current turn player's turn, make all nodes not selectable
+                    if (!transformableNode.getName().equals(currentTurnPlayerNodeName)) {
+                        transformableNode.setSelectable(false);
+                    } else {
+                        // If the node's name matches the current turn player's name, make it selectable
+                        transformableNode.setSelectable(true);
+                    }
+                }
+            }
+        }
+    }
+
+
     public void switchTurnAndUpdateSelectableNodes(ArFragment arFragment) {
         switchTurn();
         String nodeName = (currentPlayer == Player.RED) ? "redPiece" : "blackPiece";
+        updateSelectableNodesForMultiPlayer(arFragment, nodeName);
+    }
+
+    public void switchTurnAndUpdateSelectableNodesMultiplayer(ArFragment arFragment, boolean isHost) {
+        switchTurn();
+        String nodeName = isHost ? "blackPiece" : "redPiece";
         updateSelectableNodes(arFragment, nodeName);
     }
 
@@ -111,4 +152,9 @@ public class GameTurnManager {
         turnIndicator.setText("Turn: " + currentPlayerName);
     }
 
+    public void updateTurnIndicatorMultiplayer(boolean isHost) {
+        TextView turnIndicator = (TextView) ((Activity)context).findViewById(R.id.turnIndicator);
+        String currentPlayerName = isHost ? "Black, Your Turn" : "Red, Your Turn";
+        turnIndicator.setText("Turn: " + currentPlayerName);
+    }
 }

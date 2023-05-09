@@ -36,7 +36,7 @@ public class LobbyActivity extends AppCompatActivity {
     private String TAG = "onTap";
     private boolean opponentReady, hostReady;
     FirebaseAuth authFirebase;
-    FirebaseUser userFirebase;
+    String userFirebase;
     private TextView opponentUsername, user, lobbyFieldName, opponentFieldReady, userFieldReady;
     private String lobbyId;
     private FirebaseFirestore db;
@@ -58,7 +58,7 @@ public class LobbyActivity extends AppCompatActivity {
         isHost = intent.getBooleanExtra("isHost", true);
 
         authFirebase = FirebaseAuth.getInstance();
-        userFirebase = authFirebase.getCurrentUser();
+        userFirebase = authFirebase.getCurrentUser().getUid();
 
         readyButton.setOnClickListener(v -> {
             Log.d(TAG, "onCreate: IsHost " + isHost);
@@ -116,6 +116,7 @@ public class LobbyActivity extends AppCompatActivity {
             lobbyData.put("currentPlayers", 2);
             lobbyData.put("opponentReady", false);
             lobbyData.put("guestUsername", guestUsername);
+            lobbyData.put("guestId", userFirebase);
             lobbyData.put("opponentJoined", true);
 
             db.collection("lobbies").document(lobbyId).update(lobbyData)
@@ -204,27 +205,45 @@ public class LobbyActivity extends AppCompatActivity {
 
     private void deleteLobbyAndCreateGame(){
 
-        Map<String, Object> gameData = new HashMap<>();
-        gameData.put("lobbyId", lobbyId);
-        gameData.put("player1", "Red");
-        gameData.put("player2", "Black");
-        gameData.put("state", "started");
 
-        db.collection("lobbies").document(lobbyId)
-                .delete()
-                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        db.collection("games").document()
-                                .set(gameData)
-                                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                                    @Override
-                                    public void onComplete(@NonNull Task<Void> task) {
-                                        Log.d(TAG, "onComplete: deleted lobby, created a game");
-                                    }
-                                });
-                    }
-                });
+
+        db.collection("lobbies").document(lobbyId).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+            @Override
+            public void onSuccess(DocumentSnapshot documentSnapshot) {
+                Map<String, Object> gameData = new HashMap<>();
+                String guestId = documentSnapshot.getString("guestId");
+                gameData.put("lobbyId", lobbyId);
+                gameData.put("hostUserId", userFirebase);
+                gameData.put("guestUserId", guestId);
+                gameData.put("state", "started");
+                gameData.put("boardArray", null);
+                gameData.put("nodesArray", null);
+                gameData.put("isHostBoardPlaced", false);
+                gameData.put("isGuestBoardPlaced", false);
+                gameData.put("hostColor", "Black");
+                gameData.put("guestColor", "Red");
+                gameData.put("turn", "Black");
+                db.collection("lobbies").document(lobbyId)
+                        .delete()
+                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                db.collection("games").document(lobbyId)
+                                        .set(gameData)
+                                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Void> task) {
+                                                Log.d(TAG, "onComplete: deleted lobby, created a game");
+                                            }
+                                        });
+                            }
+                        });
+            }
+        });
+
+
+
+
     }
 
     private void updateFieldsAndLeave() {

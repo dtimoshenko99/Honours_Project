@@ -69,7 +69,7 @@ public class SinglePlayerActivity extends AppCompatActivity implements
         turnManager = new GameTurnManager(this);
         gameInitialization = new GameInit(this, arFragment, turnManager, this, gameType);
         gameInitialization.loadModels();
-        gameLogic = new GameLogic(turnManager, gameInitialization, null);
+        gameLogic = new GameLogic(turnManager, gameInitialization);
     }
 
     @Override

@@ -116,6 +116,8 @@ public class OpenGamesActivity extends AppCompatActivity {
         lobbyData.put("opponentReady", false);
         lobbyData.put("opponentJoined", false);
         lobbyData.put("guestUsername", "");
+        lobbyData.put("guestId", "");
+        lobbyData.put("hostId", auth.getCurrentUser().getUid());
 
 
         // Set the data for the new lobby document
