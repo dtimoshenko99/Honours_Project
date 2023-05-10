@@ -94,10 +94,17 @@ public class GameLogic {
                 Toast.makeText(gameInit.getContext(), "Thank you.", Toast.LENGTH_SHORT).show();
             }
         }else if(!wronglyPlacedPiece){
-            gameInit.redHighlightNode.setEnabled(false);
-            capturePositions.clear();
-            for(TransformableNode node : gameInit.greenHighlightArray){
-                node.setEnabled(false);
+            if (gameInit.redHighlightNode != null) {
+                gameInit.redHighlightNode.setEnabled(false);
+            }
+            if(!capturePositions.isEmpty()){
+                capturePositions.clear();
+            }
+
+            if(gameInit.greenHighlightArray.length != 0){
+                for(TransformableNode node : gameInit.greenHighlightArray){
+                    node.setEnabled(false);
+                }
             }
             if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
                 selectedNode.setWorldPosition(worldSquarePos);

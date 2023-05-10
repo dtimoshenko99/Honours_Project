@@ -35,7 +35,7 @@ public class LobbyActivity extends AppCompatActivity {
 
     private boolean isHost;
     private String TAG = "onTap";
-    private String guestUsername, hostUsername;
+    private String hostUsername;
     private ListenerRegistration readyFieldListener;
     private boolean opponentReady = false;
     private boolean hostReady = false;
@@ -44,7 +44,6 @@ public class LobbyActivity extends AppCompatActivity {
     private String lobbyId;
     private FirebaseFirestore db;
     private Button readyButton, leaveButton;
-    boolean opponentJoined;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

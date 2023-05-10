@@ -28,7 +28,6 @@ public class MultiplayerGameLogic {
     public GameDatabaseManipulations databaseManipulations;
     public HelperFunctions helperFunctions;
     private boolean nodeSelected = false;
-    public boolean gameStarted = false;
     private TransformableNode selectedNode;
     private Vector3 pickUpPosition;
     public String winner;
@@ -115,19 +114,27 @@ public class MultiplayerGameLogic {
                 Toast.makeText(gameInit.getContext(), "Thank you.", Toast.LENGTH_SHORT).show();
             }
         }else if(!wronglyPlacedPiece){
-            gameInit.redHighlightNode.setEnabled(false);
-            capturePositions.clear();
-            for(TransformableNode node : gameInit.greenHighlightArray){
-                node.setEnabled(false);
+            if (gameInit.redHighlightNode != null) {
+                gameInit.redHighlightNode.setEnabled(false);
             }
-//            if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
-//                Log.d(TAG, "checkAndUpdate: HAS CAPTURES, isHost:" + isHost);
-//                selectedNode.setWorldPosition(worldSquarePos);
-//                updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
-//
-//                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt,false, null, true);
-//
-//            }else {
+            if(!capturePositions.isEmpty()){
+                capturePositions.clear();
+            }
+
+            if(gameInit.greenHighlightArray.length != 0){
+                for(TransformableNode node : gameInit.greenHighlightArray){
+                    node.setEnabled(false);
+                }
+            }
+
+            if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
+                Log.d(TAG, "checkAndUpdate: HAS CAPTURES, isHost:" + isHost);
+                selectedNode.setWorldPosition(worldSquarePos);
+                updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
+
+                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt,false, null, true);
+
+            }else {
                 userHasCaptures = false;
 
                 // Switches the turn and updates the corresponding node's setSelectable value
@@ -145,6 +152,7 @@ public class MultiplayerGameLogic {
                 capturePositions.clear();
 
                 if(helperFunctions.isGameOver(gameInit.getBoardArray())){
+
                     Context context = gameInit.getContext();
                     Intent intent = new Intent(context, EndGameActivity.class);
                     intent.putExtra("winner", winner);
@@ -155,7 +163,7 @@ public class MultiplayerGameLogic {
                     }
                 }
             }
-//        }
+        }
     }
 
     public void checkForAvailableCapturesOnStartTurn(){

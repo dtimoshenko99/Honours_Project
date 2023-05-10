@@ -120,7 +120,6 @@ public class GameInit {
                             context, "Unable to load model", Toast.LENGTH_LONG).show();
                     return null;
                 });
-//        WeakReference<SinglePlayerActivity> weakActivity1 = new WeakReference<>(this);
         ModelRenderable.builder()
                 .setSource(context, Uri.parse("models/pieces/scene.gltf"))
                 .setIsFilamentGltf(true)
