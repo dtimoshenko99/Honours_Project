@@ -92,14 +92,14 @@ public class LobbyActivity extends AppCompatActivity {
                                     @Override
                                     public void onSuccess(DocumentSnapshot documentSnapshot) {
                                         if(opponentReady && hostReady){
-                                            readyFieldListener.remove();
-                                            if(isHost){
-                                                createGame();
-                                            }
-                                            Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
-                                            intent.putExtra("lobbyId", lobbyId);
-                                            intent.putExtra(isHost ? "hostUserId" : "guestUserId", userFirebase);
-                                            startActivity(intent);
+//                                            readyFieldListener.remove();
+//                                            if(isHost){
+//                                                createGame();
+//                                            }
+//                                            Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
+//                                            intent.putExtra("lobbyId", lobbyId);
+//                                            intent.putExtra(isHost ? "hostUserId" : "guestUserId", userFirebase);
+//                                            startActivity(intent);
                                         } else{
                                             databaseReadyFieldListener();
                                             updateUi();

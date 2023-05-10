@@ -132,7 +132,7 @@ public class MultiplayerGameLogic {
                 selectedNode.setWorldPosition(worldSquarePos);
                 updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
 
-                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt,false, null, true);
+                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt,false, null, userHasCaptures);
 
             }else {
                 userHasCaptures = false;
@@ -145,7 +145,7 @@ public class MultiplayerGameLogic {
 
 
             Log.d(TAG, "checkAndUpdate: Before update " + Arrays.toString(capturedAt));
-                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt, true,turnManager.currentPlayer.getColor(),  false);
+                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt, true,turnManager.currentPlayer.getColor(),  userHasCaptures);
 
 
                 captured = false;
@@ -290,8 +290,11 @@ public class MultiplayerGameLogic {
                     nodesToExclude.clear();
                     nodesToExclude.add(node);
                     helperFunctions.updateNodes(nodesToExclude);
-                    gameInit.greenHighlightNode.setEnabled(true);
-                    gameInit.greenHighlightNode.setWorldPosition(helperFunctions.getSquarePosition(newRow, newCol, gameInit.getSquareWorldPositions()));
+                    if(gameInit.greenHighlightNode != null){
+                        gameInit.greenHighlightNode.setEnabled(true);
+                        gameInit.greenHighlightNode.setWorldPosition(helperFunctions.getSquarePosition(newRow, newCol, gameInit.getSquareWorldPositions()));
+                        Log.d(TAG, "hasCaptures: Green Highlight node != null");
+                    }
                     captureAt[0] = newRow;
                     captureAt[1] = newCol;
                     return true;
@@ -326,6 +329,9 @@ public class MultiplayerGameLogic {
         if(!capturePositions.isEmpty()){
             for(int[] captures : capturePositions){
                 if(captures[0] == destCol && captures[1] == destRow) {
+                    if(rowDiff != colDiff){
+                        return false;
+                    }
                     captured = true;
                     lastTurnWasCapture = true;
                     Log.d(TAG, "isValidMove: Get middle and delete");
@@ -345,6 +351,9 @@ public class MultiplayerGameLogic {
         }
 
         if(userHasCaptures && destCol != captureAt[1] && destRow != captureAt[0]){
+            if(rowDiff != colDiff){
+                return false;
+            }
             Log.d(TAG, "isValidMove: " + destCol + " " + destRow);
             Log.d(TAG, "isValidMove: " + captureAt[1] + " " + captureAt[0]);
             return false;

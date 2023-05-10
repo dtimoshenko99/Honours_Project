@@ -152,13 +152,13 @@ public class GameDatabaseManipulations {
                             String turn = snapshot.getString("turn");
                             boolean hasCaptures = snapshot.getBoolean("hasCaptures");
 
-                            if(hasCaptures){
-                                multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
-                                        nowRow, nowCol, capturedRow, capturedCol);
-                                multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
-                                multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
-                                Log.d(TAG, "listenerToUpdateBoard: HAS CAPTURES, UPDATING BOARD, BUT NOT TURN");
-                            }
+//                            if(hasCaptures){
+//                                multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
+//                                        nowRow, nowCol, capturedRow, capturedCol);
+//                                multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
+//                                multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
+//                                Log.d(TAG, "listenerToUpdateBoard: HAS CAPTURES, UPDATING BOARD, BUT NOT TURN");
+//                            }
 
                             if(wasCol != -1 && wasRow != -1 && turn.equals(multiplayerGameLogic.turnManager.getUserColor())) {
                                 multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,

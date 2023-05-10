@@ -310,6 +310,9 @@ public class GameLogic {
         if(!capturePositions.isEmpty()){
             for(int[] captures : capturePositions){
                 if(captures[0] == destCol && captures[1] == destRow) {
+                    if(rowDiff != colDiff){
+                        return false;
+                    }
                     captured = true;
                     lastTurnWasCapture = true;
                     Log.d(TAG, "isValidMove: Get middle and delete");
@@ -331,6 +334,9 @@ public class GameLogic {
         }
 
         if(userHasCaptures && destCol != captureAt[1] && destRow != captureAt[0]){
+            if(rowDiff != colDiff){
+                return false;
+            }
             Log.d(TAG, "isValidMove: " + destCol + " " + destRow);
             Log.d(TAG, "isValidMove: " + captureAt[1] + " " + captureAt[0]);
             return false;
