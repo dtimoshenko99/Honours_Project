@@ -21,6 +21,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
@@ -34,13 +35,16 @@ public class LobbyActivity extends AppCompatActivity {
 
     private boolean isHost;
     private String TAG = "onTap";
-    private boolean opponentReady, hostReady;
-    FirebaseAuth authFirebase;
-    String userFirebase;
+    private String guestUsername, hostUsername;
+    private ListenerRegistration readyFieldListener;
+    private boolean opponentReady = false;
+    private boolean hostReady = false;
+    private String userFirebase;
     private TextView opponentUsername, user, lobbyFieldName, opponentFieldReady, userFieldReady;
     private String lobbyId;
     private FirebaseFirestore db;
     private Button readyButton, leaveButton;
+    boolean opponentJoined;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,14 +61,17 @@ public class LobbyActivity extends AppCompatActivity {
         intent.getExtras();
         isHost = intent.getBooleanExtra("isHost", true);
 
-        authFirebase = FirebaseAuth.getInstance();
+        FirebaseAuth authFirebase = FirebaseAuth.getInstance();
         userFirebase = authFirebase.getCurrentUser().getUid();
 
-        readyButton.setOnClickListener(v -> {
-            Log.d(TAG, "onCreate: IsHost " + isHost);
-            updateDB(isHost);
-        });
         getDataAssignListeners(intent,isHost);
+
+        readyButton.setOnClickListener(v -> {
+            String field = isHost ? "hostReady" : "opponentReady";
+            Log.d(TAG, "onCreate: " + field);
+            updateReadyField(field);
+        });
+
 
         leaveButton.setOnClickListener(v -> {
             if(isHost){
@@ -76,31 +83,48 @@ public class LobbyActivity extends AppCompatActivity {
 
     }
 
-
-
-    private void updateDB(boolean isHost) {
-        String updateField;
-        if(isHost){
-            updateField = "hostReady";
-            Log.d(TAG, "updateDB: IsHOstReady");
-        }else{
-            Log.d(TAG, "updateDB: IsOpponentReady");
-            updateField = "opponentReady";
-        }
-        db.collection("lobbies").document(lobbyId)
-                .update(updateField, true)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
+    private void updateReadyField(String field) {
+        db.collection("lobbies").document(lobbyId).update(field, true)
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
-                    public void onSuccess(Void unused) {
-                        userFieldReady.setText("Yes");
-                        Log.d("onTap", "onSuccess: UpdatedSuccessReady");
+                    public void onComplete(@NonNull Task<Void> task) {
+                        db.collection("lobbies").document(lobbyId).get()
+                                .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                                    @Override
+                                    public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                        if(opponentReady && hostReady){
+                                            readyFieldListener.remove();
+                                            if(isHost){
+                                                createGame();
+                                            }
+                                            Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
+                                            intent.putExtra("lobbyId", lobbyId);
+                                            intent.putExtra(isHost ? "hostUserId" : "guestUserId", userFirebase);
+                                            startActivity(intent);
+                                        } else{
+                                            databaseReadyFieldListener();
+                                            updateUi();
+                                        }
+                                    }
+                                });
+
                     }
                 });
     }
 
+    private void updateUi(){
+        if (isHost) {
+            userFieldReady.setText(hostReady ? "Ready" : "Not ready");
+            opponentFieldReady.setText(opponentReady ? "Ready" : "Not ready");
+        } else {
+            userFieldReady.setText(opponentReady ? "Ready" : "Not ready");
+            opponentFieldReady.setText(hostReady ? "Ready" : "Not ready");
+        }
+
+    }
+
     private void getDataAssignListeners(Intent intent,boolean isHost) {
         if(!isHost){
-
             lobbyId = intent.getStringExtra("lobbyId");
             String lobbyName = intent.getStringExtra("lobbyName");
             String hostUsername = intent.getStringExtra("hostUsername");
@@ -111,99 +135,105 @@ public class LobbyActivity extends AppCompatActivity {
             opponentUsername.setText(hostUsername);
             user.setText(guestUsername);
             lobbyFieldName.setText(lobbyName);
-
-            Map<String, Object> lobbyData = new HashMap<>();
-            lobbyData.put("currentPlayers", 2);
-            lobbyData.put("opponentReady", false);
-            lobbyData.put("guestUsername", guestUsername);
-            lobbyData.put("guestId", userFirebase);
-            lobbyData.put("opponentJoined", true);
-
-            db.collection("lobbies").document(lobbyId).update(lobbyData)
-                    .addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void unused) {
-                            Log.d(TAG, "onSuccess: UpdatedOnJoin");
-                            db.collection("lobbies").document(lobbyId).get()
-                                    .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-                                        @Override
-                                        public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                            if(documentSnapshot.getBoolean("hostReady")){
-                                                opponentFieldReady.setText("Yes");
-                                            }else{
-                                                opponentFieldReady.setText("No");
-                                                databaseReadyListener();
-                                            }
-
-                                        }
-                                    }).addOnFailureListener(new OnFailureListener() {
-                                @Override
-                                public void onFailure(Exception e) {
-                                    Log.d("onTap", "onFailure: Something failed" + e);
-                                }
-                            });
-                        }
-                    });
+            // 1st HERE
+            updateOnJoin(guestUsername);
 
         }else{
             lobbyId = intent.getStringExtra("lobbyId");
             lobbyFieldName.setText(intent.getStringExtra("lobbyName"));
-            user.setText(intent.getStringExtra("hostUsername"));
+            hostUsername = intent.getStringExtra("hostUsername");
+            user.setText(hostUsername);
             userFieldReady.setText("No");
             opponentFieldReady.setText("No");
             opponentUsername.setText("Waiting...");
-            databaseReadyListener();
+            databaseReadyFieldListener();
         }
     }
 
-    private void databaseReadyListener(){
 
-        DocumentReference lobbyRef = db.collection("lobbies").document(lobbyId);
+    private void updateOnJoin(String guestName) {
+        Map<String, Object> lobbyData = new HashMap<>();
+        lobbyData.put("currentPlayers", 2);
+        lobbyData.put("opponentReady", false);
+        lobbyData.put("guestUsername", guestName);
+        lobbyData.put("guestId", userFirebase);
+        lobbyData.put("opponentJoined", true);
+        db.collection("lobbies").document(lobbyId)
+                .update(lobbyData).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                db.collection("lobbies").document(lobbyId)
+                .get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                    @Override
+                    public void onSuccess(DocumentSnapshot documentSnapshot) {
+                        boolean isReady = documentSnapshot.getBoolean("hostReady");
+                        boolean guestReady = documentSnapshot.getBoolean("opponentReady");
 
-// Add a listener to the document to check if the opponent has joined the lobby
-        lobbyRef.addSnapshotListener((snapshot, e) -> {
-            if (e != null) {
-                Log.w("onTap", "Listen failed.", e);
-                return;
-            }
+                        if(guestReady && isReady){
+                            readyFieldListener.remove();
 
-            if (snapshot != null && snapshot.exists()) {
-                hostReady = snapshot.getBoolean("hostReady");
-                opponentReady = snapshot.getBoolean("opponentReady");
+                            if(isHost){
 
-                if (opponentReady && hostReady) {
-                    if(isHost){
-                        deleteLobbyAndCreateGame();
+                                createGame();
+
+                            }
+                                Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
+                                intent.putExtra("lobbyId", lobbyId);
+                                intent.putExtra(isHost ? "hostUserId" : "guestUserId", userFirebase);
+                                startActivity(intent);
+                        } else{
+                            databaseReadyFieldListener();
+                            updateUi();
+                        }
                     }
-                    Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
-                    intent.putExtra("lobbyId", lobbyId);
-                    if(isHost){
-                        intent.putExtra("hostUserId", userFirebase);
-                    }else{
-                        intent.putExtra("guestUserId", userFirebase);
-                    }
-                    startActivity(intent);
-                    finish();
-                }else if (opponentReady) {
-                    // Guest is ready, host is not
-                    opponentFieldReady.setText("Ready");
-                    userFieldReady.setText("Not ready");
-                } else if (hostReady) {
-                    // Host is ready, guest is not
-                    opponentFieldReady.setText("Not ready");
-                    userFieldReady.setText("Ready");
-                } else {
-                    // Neither player is ready
-                    opponentFieldReady.setText("Not ready");
-                    userFieldReady.setText("Not ready");
-                }
-            } else {
-                Log.d("onTap", "Current data: null");
+                });
             }
         });
     }
 
-    private void deleteLobbyAndCreateGame(){
+    private void databaseReadyFieldListener(){
+       readyFieldListener = db.collection("lobbies").document(lobbyId)
+                .addSnapshotListener((snapshot, e ) ->{
+                   if(e != null){
+                       Log.d(TAG, "databaseReadyFieldListener: Failed to listen :(((");
+                   }
+
+                   if(snapshot != null && snapshot.exists()){
+
+                       if(snapshot.getBoolean("opponentJoined")){
+                           opponentReady = snapshot.getBoolean("opponentReady");
+                           hostReady = snapshot.getBoolean("hostReady");
+                           db.collection("lobbies").document(lobbyId).get()
+                                   .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                                       @Override
+                                       public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                           if(isHost){
+                                               String guestUsername = documentSnapshot.getString("guestUsername");
+                                               opponentUsername.setText(guestUsername);
+                                           }
+
+                                       }
+                                   });
+                           if(opponentReady && hostReady){
+                               readyFieldListener.remove();
+                               if(isHost){
+                                   updateUi();
+                                   createGame();
+                               }
+                               Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
+                               intent.putExtra("lobbyId", lobbyId);
+                               intent.putExtra(isHost ? "hostUserId" : "guestUserId", userFirebase);
+                               startActivity(intent);
+                           }
+                           updateUi();
+                       }else{
+                       }
+                   }
+                });
+    }
+
+
+    private void createGame(){
 
 
 
@@ -228,19 +258,13 @@ public class LobbyActivity extends AppCompatActivity {
                 gameData.put("capturedCol", -1);
                 gameData.put("captured", false);
                 gameData.put("hasCaptures", false);
-                db.collection("lobbies").document(lobbyId)
-                        .delete()
+
+                db.collection("games").document(lobbyId)
+                        .set(gameData)
                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
-                                db.collection("games").document(lobbyId)
-                                        .set(gameData)
-                                        .addOnCompleteListener(new OnCompleteListener<Void>() {
-                                            @Override
-                                            public void onComplete(@NonNull Task<Void> task) {
-                                                Log.d(TAG, "onComplete: deleted lobby, created a game");
-                                            }
-                                        });
+                                Log.d(TAG, "onComplete: deleted lobby, created a game");
                             }
                         });
             }

@@ -54,6 +54,7 @@ public class MultiPlayerActivity extends AppCompatActivity implements
         db = FirebaseFirestore.getInstance();
         Intent intent = getIntent();
         lobbyId = intent.getStringExtra("lobbyId");
+        db.collection("lobbies").document(lobbyId).delete();
         if(intent.getStringExtra("hostUserId") != null){
             hostUserId = intent.getStringExtra("hostUserId");
             isHost = true;
