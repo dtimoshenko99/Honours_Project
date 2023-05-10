@@ -96,28 +96,25 @@ public class GameDatabaseManipulations {
         placeListenerPlaced = true;
     }
 
-    public void updateArrays(int[][] boardArray, int[] updateFrom, int[] updateTo, int[] capturedAt, boolean switchTurn, String switchTurnTo) {
-        List<Integer> boardList;
-        List<Integer> occupiedValueList;
+    public void updateArrays(int[] updateFrom, int[] updateTo, int[] capturedAt, boolean switchTurn, String switchTurnTo ,boolean hasCaptures) {
         int wasRow = updateFrom[0];
         int wasCol = updateFrom[1];
         int nowRow = updateTo[0];
         int nowCol = updateTo[1];
+        int capturedRow = capturedAt[0];
+        int capturedCol = capturedAt[1];
         Map<String, Object> updateFields = new HashMap<>();
         if(switchTurn){
             updateFields.put("turn", switchTurnTo);
         }
+
         updateFields.put("wasRow", wasRow);
         updateFields.put("wasCol", wasCol);
         updateFields.put("nowRow", nowRow);
         updateFields.put("nowCol", nowCol);
-
-        if(capturedAt.length != 0) {
-            int capturedRow = capturedAt[0];
-            int capturedCol = capturedAt[1];
-            updateFields.put("capturedRow", capturedRow);
-            updateFields.put("capturedCol", capturedCol);
-        }
+        updateFields.put("hasCaptures", hasCaptures);
+        updateFields.put("capturedRow", capturedRow);
+        updateFields.put("capturedCol", capturedCol);
 
         db.collection("games").document(lobbyId)
                 .update(updateFields).addOnSuccessListener(new OnSuccessListener<Void>() {
@@ -152,13 +149,21 @@ public class GameDatabaseManipulations {
                             int nowCol = snapshot.getLong("nowCol").intValue();
                             int capturedRow = snapshot.getLong("capturedRow").intValue();
                             int capturedCol = snapshot.getLong("capturedCol").intValue();
-                            Log.d(TAG, "listenerToUpdateBoard: " + snapshot.get("occupiedValueList").getClass());
                             String turn = snapshot.getString("turn");
-                            // Add BoardChanged value, that would just update the board
+                            boolean hasCaptures = snapshot.getBoolean("hasCaptures");
+
+                            if(hasCaptures){
+                                multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
+                                        nowRow, nowCol, capturedRow, capturedCol);
+                                multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
+                                multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
+                                Log.d(TAG, "listenerToUpdateBoard: HAS CAPTURES, UPDATING BOARD, BUT NOT TURN");
+                            }
+
                             if(wasCol != -1 && wasRow != -1 && turn.equals(multiplayerGameLogic.turnManager.getUserColor())) {
                                 multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
                                         nowRow, nowCol, capturedRow, capturedCol);
-                                gameInit.setBoardArray(multiplayerGameLogic.helperFunctions.updateBoardArrayFromOccupiedSquares(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray()));
+                                multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
                                 multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
                                 multiplayerGameLogic.turnManager.switchTurn();
                                 multiplayerGameLogic.turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), multiplayerGameLogic.isHost);

@@ -35,6 +35,7 @@ public class MultiplayerGameLogic {
     private int middleRow, middleCol;
     List<int[]> capturePositions = new ArrayList<>();
     List<TransformableNode> nodesToExclude = new ArrayList<>();
+    private int[] capturedAt = new int[2];
 
     // Variables to hold state of the game
     private boolean lastTurnWasCapture = false;
@@ -66,13 +67,7 @@ public class MultiplayerGameLogic {
                 databaseManipulations.boardPlaceListener.remove();
             }
             turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
-            Log.d(TAG, "gameStart: This is not triggered, am I right?");
-            String userColor = turnManager.getUserColor();
-            Log.d(TAG, "gameStart: " + turnManager.getUserColor());
-            if (turnManager.getUserColor().equals("red") && databaseManipulations.turnChangeListener == null) {
-                Log.d(TAG, "checkAndUpdate: TURN CHANGE LISTENER NOT NULL ASSIGNING NEW LISTENER");
-                databaseManipulations.listenerToUpdateBoard();
-            }
+            databaseManipulations.listenerToUpdateBoard();
         }
 
     }
@@ -130,40 +125,24 @@ public class MultiplayerGameLogic {
 //                selectedNode.setWorldPosition(worldSquarePos);
 //                updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
 //
-//                int[] capturedAt = new int[2];
-//                if(captured){
-//                    capturedAt[0] = middleRow;
-//                    capturedAt[1] = middleCol;
-//                }else{
-//                    capturedAt[0] = -1;
-//                    capturedAt[1] = -1;
-//                }
-//                databaseManipulations.updateArrays(gameInit.getBoardArray(), pickupRowAndCol,colAndRow, capturedAt,false, null);
+//                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt,false, null, true);
 //
 //            }else {
                 userHasCaptures = false;
 
-                // Does have one more to capture, but updating board anyway, as the turn wast taken
-                // Update board array
                 // Switches the turn and updates the corresponding node's setSelectable value
-                Log.d(TAG, "checkAndUpdate: Color before update:" + turnManager.currentPlayer.getColor());
                 turnManager.switchTurn();
                 turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
-                Log.d(TAG, "checkAndUpdate: Color after update:" + turnManager.currentPlayer.getColor());
                 // Update board array
                 updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
 
 
-                int[] capturedAt = new int[2];
-                if(captured){
-                    capturedAt[0] = middleRow;
-                    capturedAt[1] = middleCol;
-                }else{
-                    capturedAt[0] = -1;
-                    capturedAt[1] = -1;
-                }
-                databaseManipulations.updateArrays(gameInit.getBoardArray(), pickupRowAndCol,colAndRow, capturedAt, true,turnManager.currentPlayer.getColor());
+            Log.d(TAG, "checkAndUpdate: Before update " + Arrays.toString(capturedAt));
+                databaseManipulations.updateArrays(pickupRowAndCol,colAndRow, capturedAt, true,turnManager.currentPlayer.getColor(),  false);
 
+
+                captured = false;
+                capturePositions.clear();
 
                 if(helperFunctions.isGameOver(gameInit.getBoardArray())){
                     Context context = gameInit.getContext();
@@ -172,7 +151,6 @@ public class MultiplayerGameLogic {
                     context.startActivity(intent);
                 }else{
                     if (databaseManipulations.turnChangeListener == null) {
-                        Log.d(TAG, "checkAndUpdate: TURN CHANGE LISTENER NOT NULL ASSIGNING NEW LISTENER");
                         databaseManipulations.listenerToUpdateBoard();
                     }
                 }
@@ -318,6 +296,7 @@ public class MultiplayerGameLogic {
 
     private boolean isValidMove(int initialCol, int initialRow, int destCol, int destRow, Node node) {
         int[][] boardArray = gameInit.getBoardArray();
+        Log.d(TAG, "isValidMove: THIS SHOULDN'T BE UPDATED: isValidMoveArray" + Arrays.deepToString(boardArray));
         int rowDiff = Math.abs(destRow - initialRow);
         int colDiff = Math.abs(destCol - initialCol);
         middleRow = (initialRow + destRow) / 2;
@@ -329,6 +308,13 @@ public class MultiplayerGameLogic {
             opponentPiece = 2;
         }
 
+        Log.d(TAG, "isValidMove: initialRow" + initialRow);
+        Log.d(TAG, "isValidMove: initialCol" + initialCol);
+        Log.d(TAG, "isValidMove: destRow" + destRow);
+        Log.d(TAG, "isValidMove: destCol" + destCol);
+        Log.d(TAG, "isValidMove: middleRow" + middleRow);
+        Log.d(TAG, "isValidMove: middleCol" + middleCol);
+
         if(!capturePositions.isEmpty()){
             for(int[] captures : capturePositions){
                 if(captures[0] == destCol && captures[1] == destRow) {
@@ -337,6 +323,9 @@ public class MultiplayerGameLogic {
                     Log.d(TAG, "isValidMove: Get middle and delete");
                     TransformableNode[][] nodeArray = gameInit.getNodesArray();
                     helperFunctions.removePieceFromScene(nodeArray[middleRow][middleCol]);
+                    capturedAt[0] = middleRow;
+                    capturedAt[1] = middleCol;
+                    Log.d(TAG, "checkAndUpdate: Middle and delete" + Arrays.toString(capturedAt));
                     return true;
                 }
             }
@@ -406,16 +395,18 @@ public class MultiplayerGameLogic {
                 Log.d(TAG, "isValidMove: Get middle and delete");
                 TransformableNode[][] nodeArray = gameInit.getNodesArray();
                 helperFunctions.removePieceFromScene(nodeArray[middleRow][middleCol]);
+                capturedAt[0] = middleRow;
+                capturedAt[1] = middleCol;
+                Log.d(TAG, "checkAndUpdate: Captured" + Arrays.toString(capturedAt));
                 return true;
             }
         }
+
+        Log.d(TAG, "checkAndUpdate: not captured" + Arrays.toString(capturedAt));
+        capturedAt[0] = -1;
+        capturedAt[1] = -1;
         lastTurnWasCapture = false;
         return true;
-
-    }
-
-    // TODO: need to update the board
-    public void updateBoard(int[][] boardArray, TransformableNode[][] nodesArray){
 
     }
 
