@@ -86,7 +86,7 @@ public class MultiPlayerActivity extends AppCompatActivity implements
             arFragment.setOnViewCreatedListener(this);
             arFragment.setOnTapArPlaneListener(this);
         }
-        turnManager = new GameTurnManager(this);
+        turnManager = new GameTurnManager(this, isHost);
         gameInitialization = new GameInit(this, arFragment, turnManager, this, gameType);
         gameInitialization.loadModels();
         gameLogic = new GameLogic(turnManager, gameInitialization);
@@ -113,15 +113,8 @@ public class MultiPlayerActivity extends AppCompatActivity implements
     @Override
     public void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
         gameInitialization.createAnchors(hitResult, arFragment);
-        String userId;
-
-        if(!isHost){
-            userId = guestUserId;
-        }else{
-            userId = hostUserId;
-        }
         Log.d("onTap", "onTapPlane: TAP ON PLANE");
-        multiplayerGameLogic.gameStart(userId, gameInitialization.getBoardArray(), gameInitialization.getNodesArray());
+        multiplayerGameLogic.gameStart(gameInitialization.getBoardArray(), gameInitialization.getNodesArray());
     }
 
     @Override

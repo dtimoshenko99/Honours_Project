@@ -22,17 +22,17 @@ import java.util.List;
 
 public class MultiplayerGameLogic {
     public boolean isHost;
-    private GameTurnManager turnManager;
+    public GameTurnManager turnManager;
     private GameLogic gameLogic;
     private GameInit gameInit;
-    private GameDatabaseManipulations databaseManipulations;
+    public GameDatabaseManipulations databaseManipulations;
     public HelperFunctions helperFunctions;
     private boolean nodeSelected = false;
+    public boolean gameStarted = false;
     private TransformableNode selectedNode;
     private Vector3 pickUpPosition;
     public String winner;
     private int middleRow, middleCol;
-    private int capturedRed, capturedBlack;
     List<int[]> capturePositions = new ArrayList<>();
     List<TransformableNode> nodesToExclude = new ArrayList<>();
 
@@ -54,23 +54,27 @@ public class MultiplayerGameLogic {
         this.gameInit = gameInit;
         this.databaseManipulations = new GameDatabaseManipulations(db, lobby, gameInit, this);
         this.helperFunctions = new HelperFunctions(gameInit, gameLogic);
-
     }
 
-    public void gameStart(String userId, int[][] boardArray, TransformableNode[][] nodesArray) {
+    public void gameStart(int[][] boardArray, TransformableNode[][] nodesArray) {
         // Update database with User ID and
-
-        databaseManipulations.updateBoardPlacedField(isHost, boardArray, nodesArray);
-        Log.d(TAG, "gameStart: Updated Boardplaced Field");
-        if(databaseManipulations.bothBoardsPlaced){
-            turnManager.updateSelectableNodesForMultiPlayer(gameInit.getArFragment(), turnManager.currentPlayer.getNodeName());
-            turnManager.updateTurnIndicatorMultiplayer(isHost);
+        if(!databaseManipulations.bothBoardsPlaced){
+            databaseManipulations.updateBoardPlacedField(isHost, boardArray, nodesArray);
+            Log.d(TAG, "gameStart: Updated Boardplaced Field");
+        }else if(databaseManipulations.gameStarted) {
+            if (databaseManipulations.boardPlaceListener != null) {
+                databaseManipulations.boardPlaceListener.remove();
+            }
+            turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
+            Log.d(TAG, "gameStart: This is not triggered, am I right?");
+            String userColor = turnManager.getUserColor();
+            Log.d(TAG, "gameStart: " + turnManager.getUserColor());
+            if (turnManager.getUserColor().equals("red") && databaseManipulations.turnChangeListener == null) {
+                Log.d(TAG, "checkAndUpdate: TURN CHANGE LISTENER NOT NULL ASSIGNING NEW LISTENER");
+                databaseManipulations.listenerToUpdateBoard();
+            }
         }
-        // This needs to be set every time the user's turn ends
-    }
 
-    public void setWinner(String winner){
-        this.winner = winner;
     }
 
     private List<Vector3> squareWorldPositions;
@@ -121,42 +125,63 @@ public class MultiplayerGameLogic {
             for(TransformableNode node : gameInit.greenHighlightArray){
                 node.setEnabled(false);
             }
-            if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
-                selectedNode.setWorldPosition(worldSquarePos);
-                updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
-
-                databaseManipulations.updateArrays(gameInit.getBoardArray(), gameInit.getNodesArray(), false, null);
-
-            }else {
+//            if(hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && lastTurnWasCapture){
+//                Log.d(TAG, "checkAndUpdate: HAS CAPTURES, isHost:" + isHost);
+//                selectedNode.setWorldPosition(worldSquarePos);
+//                updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
+//
+//                int[] capturedAt = new int[2];
+//                if(captured){
+//                    capturedAt[0] = middleRow;
+//                    capturedAt[1] = middleCol;
+//                }else{
+//                    capturedAt[0] = -1;
+//                    capturedAt[1] = -1;
+//                }
+//                databaseManipulations.updateArrays(gameInit.getBoardArray(), pickupRowAndCol,colAndRow, capturedAt,false, null);
+//
+//            }else {
                 userHasCaptures = false;
 
                 // Does have one more to capture, but updating board anyway, as the turn wast taken
                 // Update board array
-                selectedNode.setWorldPosition(worldSquarePos);
                 // Switches the turn and updates the corresponding node's setSelectable value
-                turnManager.switchTurnAndUpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
+                Log.d(TAG, "checkAndUpdate: Color before update:" + turnManager.currentPlayer.getColor());
+                turnManager.switchTurn();
+                turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
+                Log.d(TAG, "checkAndUpdate: Color after update:" + turnManager.currentPlayer.getColor());
                 // Update board array
                 updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0] ,colAndRow[1], colAndRow[0], middleCol, middleRow);
 
 
-                // Update textview with the text of whose turn it is
-                turnManager.updateTurnIndicator();
+                int[] capturedAt = new int[2];
+                if(captured){
+                    capturedAt[0] = middleRow;
+                    capturedAt[1] = middleCol;
+                }else{
+                    capturedAt[0] = -1;
+                    capturedAt[1] = -1;
+                }
+                databaseManipulations.updateArrays(gameInit.getBoardArray(), pickupRowAndCol,colAndRow, capturedAt, true,turnManager.currentPlayer.getColor());
 
-                // TODO: UPdate in the database
-                databaseManipulations.updateArrays(gameInit.getBoardArray(), gameInit.getNodesArray(), true, turnManager.currentPlayer.getColor());
-                checkForAvailableCapturesOnStartTurn();
 
                 if(helperFunctions.isGameOver(gameInit.getBoardArray())){
                     Context context = gameInit.getContext();
                     Intent intent = new Intent(context, EndGameActivity.class);
                     intent.putExtra("winner", winner);
                     context.startActivity(intent);
+                }else{
+                    if (databaseManipulations.turnChangeListener == null) {
+                        Log.d(TAG, "checkAndUpdate: TURN CHANGE LISTENER NOT NULL ASSIGNING NEW LISTENER");
+                        databaseManipulations.listenerToUpdateBoard();
+                    }
                 }
             }
-        }
+//        }
     }
 
     public void checkForAvailableCapturesOnStartTurn(){
+
         capturePositions = helperFunctions.getCapturePositions(turnManager.currentPlayer);
         List<Vector3> turnPos = new ArrayList<>();
 
@@ -243,7 +268,6 @@ public class MultiplayerGameLogic {
 
         // Update both arrays here
 
-//       gameDatabaseManipulations.updateArrays(boardArray, nodesArray);
 
     }
 
@@ -313,11 +337,6 @@ public class MultiplayerGameLogic {
                     Log.d(TAG, "isValidMove: Get middle and delete");
                     TransformableNode[][] nodeArray = gameInit.getNodesArray();
                     helperFunctions.removePieceFromScene(nodeArray[middleRow][middleCol]);
-                    if(opponentPiece == 1){
-                        capturedRed += 1;
-                    }else{
-                        capturedBlack += 1;
-                    }
                     return true;
                 }
             }
@@ -387,11 +406,6 @@ public class MultiplayerGameLogic {
                 Log.d(TAG, "isValidMove: Get middle and delete");
                 TransformableNode[][] nodeArray = gameInit.getNodesArray();
                 helperFunctions.removePieceFromScene(nodeArray[middleRow][middleCol]);
-                if(opponentPiece == 1){
-                    capturedRed += 1;
-                }else{
-                    capturedBlack += 1;
-                }
                 return true;
             }
         }

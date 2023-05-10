@@ -37,22 +37,6 @@ public class MainMenuActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
         user = auth.getCurrentUser();
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(new OnCompleteListener<String>() {
-                    @Override
-                    public void onComplete(@NonNull Task<String> task) {
-                        if (!task.isSuccessful()) {
-                            Log.w("onTap", "Fetching FCM registration token failed", task.getException());
-                            return;
-                        }
-
-                        // Get new FCM registration token
-                        String token = task.getResult();
-
-                        // Log and use the token as needed
-                        Log.d("onTap", "FCM registration token: " + token);
-                    }
-                });
 
 //        if(user.getUid() != null){
 //            getRecentGames(user.getUid());

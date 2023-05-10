@@ -32,6 +32,8 @@ public class GameTurnManager {
     }
 
     public boolean isHost;
+    public String userColor;
+
     public Player currentPlayer;
     private Context context;
 
@@ -43,6 +45,21 @@ public class GameTurnManager {
             currentPlayer = Player.BLACK;
         }
         this.context = context;
+    }
+
+    public GameTurnManager(Context context, boolean isHost){
+        this.context = context;
+        this.isHost = isHost;
+        currentPlayer = Player.BLACK;
+    }
+
+    public String getUserColor(){
+        if(isHost){
+            userColor = "black";
+        }else{
+            userColor = "red";
+        }
+        return userColor;
     }
 
     public boolean isMoveAllowed(String nodeName) {
@@ -100,34 +117,22 @@ public class GameTurnManager {
 
     }
 
-    public void updateSelectableNodesForMultiPlayer(ArFragment arFragment, String currentTurnPlayerNodeName) {
+    public void updateAllNodesSelectableToFalse(ArFragment arFragment) {
         // Iterate through all nodes in the scene
         for (Node node : arFragment.getArSceneView().getScene().getChildren()) {
             // Check if the node is a TransformableNode
             if (node instanceof TransformableNode) {
                 TransformableNode transformableNode = (TransformableNode) node;
+                transformableNode.setSelectable(false);
 
-                // If it is not the current turn player's turn, make all nodes not selectable
-                if (!transformableNode.getName().equals(currentTurnPlayerNodeName)) {
-                    transformableNode.setSelectable(false);
-                } else {
-                    // If the node's name matches the current turn player's name, make it selectable
-                    transformableNode.setSelectable(true);
-                }
             }
             // Iterate the hierarchy
             for (Node node1 : node.getChildren()) {
                 // Check if the node is a TransformableNode
                 if (node1 instanceof TransformableNode) {
                     TransformableNode transformableNode = (TransformableNode) node1;
+                    transformableNode.setSelectable(false);
 
-                    // If it is not the current turn player's turn, make all nodes not selectable
-                    if (!transformableNode.getName().equals(currentTurnPlayerNodeName)) {
-                        transformableNode.setSelectable(false);
-                    } else {
-                        // If the node's name matches the current turn player's name, make it selectable
-                        transformableNode.setSelectable(true);
-                    }
                 }
             }
         }
@@ -137,12 +142,6 @@ public class GameTurnManager {
     public void switchTurnAndUpdateSelectableNodes(ArFragment arFragment) {
         switchTurn();
         String nodeName = (currentPlayer == Player.RED) ? "redPiece" : "blackPiece";
-        updateSelectableNodesForMultiPlayer(arFragment, nodeName);
-    }
-
-    public void switchTurnAndUpdateSelectableNodesMultiplayer(ArFragment arFragment, boolean isHost) {
-        switchTurn();
-        String nodeName = isHost ? "blackPiece" : "redPiece";
         updateSelectableNodes(arFragment, nodeName);
     }
 
@@ -152,9 +151,34 @@ public class GameTurnManager {
         turnIndicator.setText("Turn: " + currentPlayerName);
     }
 
-    public void updateTurnIndicatorMultiplayer(boolean isHost) {
+    public void UpdateSelectableNodesMultiplayer(ArFragment arFragment, boolean isHost) {
+        String nodeName;
+        if(currentPlayer == Player.RED && isHost){
+            updateAllNodesSelectableToFalse(arFragment);
+        } else if(currentPlayer == Player.RED && !isHost){
+            nodeName = "redPiece";
+            updateSelectableNodes(arFragment, nodeName);
+        } else if(currentPlayer == Player.BLACK && isHost){
+            nodeName = "blackPiece";
+            updateSelectableNodes(arFragment, nodeName);
+        }else if(currentPlayer == Player.BLACK && !isHost){
+            updateAllNodesSelectableToFalse(arFragment);
+        }
+        updateTurnIndicatorMultiplayer();
+    }
+
+    public void updateTurnIndicatorMultiplayer() {
         TextView turnIndicator = (TextView) ((Activity)context).findViewById(R.id.turnIndicator);
-        String currentPlayerName = isHost ? "Black, Your Turn" : "Red, Your Turn";
+        String currentPlayerName = null;
+        if(currentPlayer == Player.RED && isHost){
+            currentPlayerName = "Red's Turn, Please Wait";
+        } else if(currentPlayer == Player.RED && !isHost){
+            currentPlayerName = "Your Turn - Red";
+        } else if(currentPlayer == Player.BLACK && isHost){
+            currentPlayerName = "Your Turn - Black";
+        }else if(currentPlayer == Player.BLACK && !isHost){
+            currentPlayerName = "Black's Turn, Please Wait";
+        }
         turnIndicator.setText("Turn: " + currentPlayerName);
     }
 }

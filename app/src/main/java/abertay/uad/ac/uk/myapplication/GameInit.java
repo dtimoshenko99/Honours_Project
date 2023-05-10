@@ -48,6 +48,7 @@ public class GameInit {
     private TransformableNode[][] nodesArray;
     ModelRenderable cubeRenderable;
     private String gameType;
+    public List<Integer> occupiedSquares = new ArrayList<>();
 
     private int[][] boardArray = {
             {0, 1, 0, 1, 0, 1, 0, 1},
@@ -144,6 +145,7 @@ public class GameInit {
                     redHighlightNode = new TransformableNode(arFragment.getTransformationSystem());
                     redHighlightNode.setParent(highlightAnchorNode);
                     redHighlightNode.setRenderable(cubeRenderable);
+                    redHighlightNode.setSelectable(false);
                     redHighlightNode.setEnabled(false);
                 });
 
@@ -158,6 +160,7 @@ public class GameInit {
                     greenHighlightNode.setParent(highlightAnchorNode);
                     greenHighlightNode.setRenderable(cubeRenderable);
                     greenHighlightNode.setEnabled(false);
+                    greenHighlightNode.setSelectable(false);
                     greenHighlightArray[0] = greenHighlightNode;
                 });
         MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
@@ -171,6 +174,7 @@ public class GameInit {
                     secondGreenHighlightNode.setParent(highlightAnchorNode);
                     secondGreenHighlightNode.setRenderable(cubeRenderable);
                     secondGreenHighlightNode.setEnabled(false);
+                    secondGreenHighlightNode.setSelectable(false);
                     greenHighlightArray[1] = secondGreenHighlightNode;
                 });
         MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
@@ -183,6 +187,7 @@ public class GameInit {
                     thirdGreenHighlightNode = new TransformableNode(arFragment.getTransformationSystem());
                     thirdGreenHighlightNode.setParent(highlightAnchorNode);
                     thirdGreenHighlightNode.setRenderable(cubeRenderable);
+                    thirdGreenHighlightNode.setSelectable(false);
                     thirdGreenHighlightNode.setEnabled(false);
                     greenHighlightArray[2] = thirdGreenHighlightNode;
                 });
@@ -197,6 +202,7 @@ public class GameInit {
                     fourthGreenHighlightNode.setParent(highlightAnchorNode);
                     fourthGreenHighlightNode.setRenderable(cubeRenderable);
                     fourthGreenHighlightNode.setEnabled(false);
+                    fourthGreenHighlightNode.setSelectable(false);
                     greenHighlightArray[3] = fourthGreenHighlightNode;
                 });
     }

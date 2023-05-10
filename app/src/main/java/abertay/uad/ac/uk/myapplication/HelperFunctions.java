@@ -7,11 +7,14 @@ import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.ux.TransformableNode;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class HelperFunctions{
     GameInit gameInit;
     GameLogic gameLogic;
+
+    String TAG = "onTap";
 
     public HelperFunctions(GameInit gameInit, GameLogic gameLogic){
         this.gameInit = gameInit;
@@ -74,7 +77,7 @@ public class HelperFunctions{
         }
     }
 
-    public  Vector3 getSquarePosition(int row, int col, List<Vector3> squareWorldPositions) {
+    public Vector3 getSquarePosition(int row, int col, List<Vector3> squareWorldPositions) {
         int index = row * 8 + col;
         return squareWorldPositions.get(index);
     }
@@ -193,26 +196,75 @@ public class HelperFunctions{
                 }
             }
         }
-
+        Log.d(TAG, "translateBoardArrayToList: Array before:" + occupiedSquares.toString());
         return occupiedSquares;
     }
 
-    public List<Integer> translateNodeArrayToList(TransformableNode[][] nodesArray) {
-        List<Integer> occupiedSquares = new ArrayList<>();
+    public List<Integer> getOccupiedSquaresIntoList(int[][] boardArray) {
+        List<Integer> occupiedSquareValues = new ArrayList<>();
 
-        // Iterate through all nodes in the array
-        for (int i = 0; i < nodesArray.length; i++) {
-            for (int j = 0; j < nodesArray[i].length; j++) {
-                TransformableNode node = nodesArray[i][j];
-                if (node != null && node.isEnabled()) {
-                    // If the node is enabled, add its square number to the list
-                    int squareNumber = i * nodesArray.length + j;
-                    occupiedSquares.add(squareNumber);
+        for (int row = 0; row < boardArray.length; row++) {
+            for (int col = 0; col < boardArray[row].length; col++) {
+                if (boardArray[row][col] != 0) { // Square is occupied
+                    int squareValue = boardArray[row][col]; // Get the value of the occupied square
+                    occupiedSquareValues.add(squareValue);
+                    Log.d("onTap", "getOccupiedSquaresIntoList: " + squareValue);
                 }
             }
         }
-
-        return occupiedSquares;
+        Log.d("onTap", "getOccupiedSquaresIntoList: " + occupiedSquareValues.toString());
+        return occupiedSquareValues;
     }
 
+    public int[][] updateBoardArrayFromOccupiedSquares(int wasRow, int wasCol, int nowRow, int nowCol, int capturedRow, int capturedCol, int[][] boardArray) {
+        if (wasCol != -1 && wasRow != -1) {
+            // Reset the previous square
+            boardArray[wasRow][wasCol] = 0;
+
+            // Move the piece to the new square
+            boardArray[nowRow][nowCol] = 1;
+
+            // Remove the captured piece
+            if (capturedCol != -1 && capturedRow != -1) {
+                boardArray[capturedRow][capturedCol] = 0;
+            }
+        }
+        return boardArray;
+    }
+
+    public void updateNodesArray(TransformableNode[][] nodesArray, int wasRow, int wasCol, int nowRow, int nowCol, int capturedRow, int capturedCol) {
+        Log.d("onTap", "updateNodesArray: nodesArray: " + Arrays.deepToString(nodesArray));
+//        TransformableNode node = nodesArray[wasRow][wasCol]; // Get the node at the previous position
+//        Log.d("onTap", "updateNodesArray: " + nodesArray[wasRow][wasCol]);
+        TransformableNode[][] array = nodesArray;
+        TransformableNode node = array[wasRow][wasCol];
+
+        Log.d("onTap", "updateNodesArray: " + wasRow + wasCol+ nowRow+nowCol+ capturedRow+capturedCol);
+        if (capturedRow != -1 && capturedCol != -1) { // Check if there is a captured node
+            array[capturedRow][capturedCol] = null; // Delete the captured node
+
+        }
+
+        if (wasRow != nowRow || wasCol != nowCol) { // Check if the node has moved
+            array[nowRow][nowCol] = node; // Move the node to the new position
+            array[wasRow][wasCol] = null; // Delete the node from the previous position
+
+        }
+        Log.d("onTap", "updateNodesArray: nodesArray: " + Arrays.deepToString(nodesArray));
+        gameInit.setNodesArray(array);
+    }
+
+    public void updateGameBoard(int[][] boardArray, TransformableNode[][] nodesArray) {
+
+        for (int row = 0; row < boardArray.length; row++) {
+            for (int col = 0; col < boardArray[row].length; col++) {
+                TransformableNode node = nodesArray[row][col];
+//                Log.d("onTap", "updateGameBoard: Row:" + row  + " " + " Col: " + col  + " Node: " + node);
+                if (boardArray[row][col] != 0) { // If the square is occupied
+                    Vector3 newPos = getSquarePosition(row, col, gameInit.getSquareWorldPositions());
+                    node.setWorldPosition(newPos);
+                }
+            }
+        }
+    }
 }

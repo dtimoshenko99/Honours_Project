@@ -3,17 +3,19 @@ package abertay.uad.ac.uk.myapplication;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.ar.sceneform.ux.TransformableNode;
-import com.google.firebase.database.annotations.Nullable;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +23,11 @@ import java.util.Map;
 public class GameDatabaseManipulations {
 
     public boolean bothBoardsPlaced = false;
-    public boolean listenerPlaced = false;
+    public boolean userReady = false;
+    public boolean gameStarted = false;
+    private boolean boardListenerActive = false;
+    private boolean placeListenerPlaced = false;
+    public ListenerRegistration boardPlaceListener, turnChangeListener;
     private String TAG = "onTap";
     private FirebaseFirestore db;
     private String lobbyId;
@@ -34,215 +40,136 @@ public class GameDatabaseManipulations {
         this.multiplayerGameLogic = multiplayerGameLogic;
     }
 
-    public void updateBoardPlacedField(boolean isHost, int[][] boardArray, TransformableNode[][] nodeArray){
-
+    public void updateBoardPlacedField(boolean isHost, int[][] boardArray, TransformableNode[][] nodeArray) {
         DocumentReference docRef = db.collection("games").document(lobbyId);
-
         Log.d(TAG, "updateBoardPlacedField: isHost: " + isHost);
+
         // Update the field of isBoardPlaced for users
         docRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+            @Override
+            public void onSuccess(DocumentSnapshot documentSnapshot) {
+                Map<String, Object> mapSet = new HashMap<>();
+                if (isHost && !userReady) {
+                    mapSet.put("isHostBoardPlaced", true);
+                    docRef.update(mapSet);
+                    userReady = true;
+                    Log.d(TAG, "onSuccess: SUKA EBANAJA OTSJUDA");
+                } else if (!isHost && !userReady) {
+                    mapSet.put("isGuestBoardPlaced", true);
+                    docRef.update(mapSet);
+                    userReady = true;
+                    Log.d(TAG, "onSuccess: SUKA EBANAJA OTSJUDA V2");
+                }
+                docRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                     @Override
                     public void onSuccess(DocumentSnapshot documentSnapshot) {
-                        boolean isHostBoardPlaced;
-                        boolean isGuestBoardPlaced;
-                        Map<String, Object> mapSet = new HashMap<>();
-                        if(isHost) {
-                            mapSet.put("isHostBoardPlaced", true);
-                            isHostBoardPlaced = true;
-                            isGuestBoardPlaced = documentSnapshot.getBoolean("isGuestBoardPlaced");
-                        }else{
-                            mapSet.put("isGuestBoardPlaced", true);
-                            isGuestBoardPlaced = true;
-                            isHostBoardPlaced = documentSnapshot.getBoolean("isHostBoardPlaced");
-                        }
-                        docRef.update(mapSet);
-                        if(isGuestBoardPlaced && isHostBoardPlaced){
-                            Log.d(TAG, "onSuccess: ");
-                            List<Integer> boardList;
-                            List<Integer> nodesList;
-                            boardList = multiplayerGameLogic.helperFunctions.translateBoardArrayToList(boardArray);
-                            nodesList = multiplayerGameLogic.helperFunctions.translateNodeArrayToList(nodeArray);
-                            docRef.update("boardList", boardList);
-                            docRef.update("nodesList" , nodesList);
-                        }
-                        Log.d(TAG, "onSuccess: Updated Board Placed Fiels");
-                    }
-                });
-
-    }
-
-//    public void hz(){
-//        DocumentReference lobbyRef = db.collection("games").document(lobbyId);
-//        lobbyRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-//            @Override
-//            public void onSuccess(DocumentSnapshot documentSnapshot) {
-//                if (documentSnapshot.exists()) {
-//                    String hostId = documentSnapshot.getString("hostUserId");
-//                    String guestId = documentSnapshot.getString("guestUserId");
-//
-//                    lobbyRef.update("boardArray", boardList);
-//                    lobbyRef.update("nodesArray", nodeList);
-//                    Log.d(TAG, "onSuccess: boardArray: " + boardArray);
-//                    Log.d(TAG, "onSuccess: nodeArray" + nodeArray);
-//                    // Update the board array in the database for the appropriate user
-//                    if (userId.equals(hostId)) {
-//                        Log.d(TAG, "onSuccess: updateBoardPlaced  HOST = true");
-//                        isHost = true;
-//                        lobbyRef.update("isHostBoardPlaced", true).addOnFailureListener(new OnFailureListener() {
-//                            @Override
-//                            public void onFailure(@NonNull Exception e) {
-//                                Log.d(TAG, "onFailure: HOST BOARD PLACED UPDAT FAILED");
-//                            }
-//                        });
-//                    } else if (userId.equals(guestId)) {
-//                        Log.d(TAG, "onSuccess: updateBoardPlaced  GUEST = true");
-//                        isHost = false;
-//                        lobbyRef.update("isGuestBoardPlaced", true);
-//                    }
-//                    // I probably need to pass a turn here
-//                    boardPlacedListener(isHost);
-//                }
-//            }
-//        }).addOnFailureListener(new OnFailureListener() {
-//            @Override
-//            public void onFailure(@NonNull Exception e) {
-//                Log.d(TAG, "onFailure: FAILURE : " + e);
-//            }
-//        });
-//    }
-
-    public void boardPlacedListener(boolean isHost) {
-
-        if(!listenerPlaced){
-            listenerPlaced = true;
-        }
-        db.collection("games").document(lobbyId)
-                .addSnapshotListener(new EventListener<DocumentSnapshot>() {
-                    @Override
-                    public void onEvent(@Nullable DocumentSnapshot snapshot,
-                                        @Nullable FirebaseFirestoreException e) {
-                        if (e != null) {
-                            Log.w(TAG, "Listen failed.", e);
-                            return;
-                        }
-                        if (snapshot != null && snapshot.exists()) {
-
-                            List<List<TransformableNode>> nodeList = (List<List<TransformableNode>>) snapshot.get("nodesArray");
-
-                            TransformableNode[][] nodeArray = new TransformableNode[nodeList.size()][nodeList.get(0).size()];
-                            for (int i = 0; i < nodeList.size(); i++) {
-                                for (int j = 0; j < nodeList.get(i).size(); j++) {
-                                    nodeArray[i][j] = nodeList.get(i).get(j);
-                                }
-                            }
-                            int[][] boardArray = (int[][]) snapshot.get("boardArray");
-                            TransformableNode[][] nodesArray = (TransformableNode[][]) snapshot.get("nodesArray");
-                            // Do something with the isHostBoardPlaced value
-                            arraysUpdatedInDatabase(nodesArray, boardArray);
-
+                        // Check if both boards are placed before adding the listener
+                        if (documentSnapshot.getBoolean("isGuestBoardPlaced") && documentSnapshot.getBoolean("isHostBoardPlaced")) {
+                            bothBoardsPlaced = true;
+                            gameStarted = true;
+                            multiplayerGameLogic.gameStart(gameInit.getBoardArray(), gameInit.getNodesArray());
+                            Log.d(TAG, "onSuccess: SUKA EBANAJA OTSJUDA V3");
                         } else {
-                            Log.d(TAG, "Current data: null");
+                            placeListener(boardArray);
                         }
                     }
                 });
-    }
-
-    public void arraysUpdatedInDatabase(TransformableNode[][] nodesArray, int[][] boardArray){
-        gameInit.setBoardArray(boardArray);
-        gameInit.setNodesArray(nodesArray);
-
-    }
-
-    public void updateArrays(int[][] boardArray, TransformableNode[][] nodesArray, boolean updateTurn, String switchTurnTo) {
-        DocumentReference docRef = db.collection("games").document(lobbyId);
-        Map<String, int[][]> boardMap = new HashMap<>();
-        boardMap.put("boardArray", boardArray);
-        if(updateTurn){
-            Map<String, String> updateTurnInDb = new HashMap<>();
-            updateTurnInDb.put("turn", switchTurnTo);
-        }
-        docRef.set(boardMap).addOnSuccessListener(new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void unused) {
-                Map<String, TransformableNode[][]> nodeMap = new HashMap<>();
-                nodeMap.put("nodesArray", nodesArray);
-                docRef.set(nodeMap).addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void unused) {
-                        Log.d(TAG, "onSuccess: Success, board and nodes updated in DB");
-                    }
-                }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Log.d(TAG, "onFailure: nodeArray updateFailed:" + e);
-                    }
-                });
-            }
-        }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                Log.d(TAG, "onFailure: Boardarray updateFailed: " + e);
+                Log.d(TAG, "onSuccess: Updated Board Placed Fields");
             }
         });
     }
 
-    public void placeBoardArrayListener() {
+    private void placeListener(int[][] boardArray) {
+        if (placeListenerPlaced || bothBoardsPlaced) {
+            return;
+        }
 
+        DocumentReference docRef = db.collection("games").document(lobbyId);
+        boardPlaceListener = docRef.addSnapshotListener((snapshot, e) -> {
+            if (snapshot.getBoolean("isGuestBoardPlaced") && snapshot.getBoolean("isHostBoardPlaced")) {
+                gameStarted = true;
+                multiplayerGameLogic.gameStart(gameInit.getBoardArray(), gameInit.getNodesArray());
+                Log.d(TAG, "placeListener: both boards placed, game started");
+            }
+        });
+
+        placeListenerPlaced = true;
     }
 
-    private void updateBoardFromDatabase(String lobbyId) {
-        db.collection("lobbies").document(lobbyId)
-                .addSnapshotListener(new EventListener<DocumentSnapshot>() {
-                    @Override
-                    public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
-                        if (e != null) {
-                            Log.w(TAG, "listen:error", e);
+    public void updateArrays(int[][] boardArray, int[] updateFrom, int[] updateTo, int[] capturedAt, boolean switchTurn, String switchTurnTo) {
+        List<Integer> boardList;
+        List<Integer> occupiedValueList;
+        int wasRow = updateFrom[0];
+        int wasCol = updateFrom[1];
+        int nowRow = updateTo[0];
+        int nowCol = updateTo[1];
+        Map<String, Object> updateFields = new HashMap<>();
+        if(switchTurn){
+            updateFields.put("turn", switchTurnTo);
+        }
+        updateFields.put("wasRow", wasRow);
+        updateFields.put("wasCol", wasCol);
+        updateFields.put("nowRow", nowRow);
+        updateFields.put("nowCol", nowCol);
+
+        if(capturedAt.length != 0) {
+            int capturedRow = capturedAt[0];
+            int capturedCol = capturedAt[1];
+            updateFields.put("capturedRow", capturedRow);
+            updateFields.put("capturedCol", capturedCol);
+        }
+
+        db.collection("games").document(lobbyId)
+                .update(updateFields).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void unused) {
+                Log.d(TAG, "onSuccess: ALL FIELDS ARE UPDATED");
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.d(TAG, "onFailure: Failed to Update: " + e);
+            }
+        });
+    }
+
+    public void listenerToUpdateBoard(){
+        if(boardListenerActive){
+            return;
+        }
+
+        turnChangeListener = db.collection("games").document(lobbyId)
+                .addSnapshotListener((snapshot, error) ->{
+                        if (error != null) {
+                            Log.w(TAG, "Listen failed.", error);
                             return;
                         }
-                        if (documentSnapshot != null && documentSnapshot.exists()) {
-                            // Get the boardArray data from the document snapshot
-                            int[][] boardArray = (int[][]) documentSnapshot.get("boardArray");
-                            TransformableNode[][] nodesArray = (TransformableNode[][]) documentSnapshot.get("nodesArray");
-                            // Call a function to update the game board with the new data
-                            gameInit.setNodesArray(nodesArray);
-                            gameInit.setBoardArray(boardArray);
-                            multiplayerGameLogic.updateBoard(boardArray, nodesArray);
+
+                        if (snapshot != null && snapshot.exists()) {
+                            int wasRow = snapshot.getLong("wasRow").intValue();
+                            int wasCol = snapshot.getLong("wasCol").intValue();
+                            int nowRow = snapshot.getLong("nowRow").intValue();
+                            int nowCol = snapshot.getLong("nowCol").intValue();
+                            int capturedRow = snapshot.getLong("capturedRow").intValue();
+                            int capturedCol = snapshot.getLong("capturedCol").intValue();
+                            Log.d(TAG, "listenerToUpdateBoard: " + snapshot.get("occupiedValueList").getClass());
+                            String turn = snapshot.getString("turn");
+                            // Add BoardChanged value, that would just update the board
+                            if(wasCol != -1 && wasRow != -1 && turn.equals(multiplayerGameLogic.turnManager.getUserColor())) {
+                                multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
+                                        nowRow, nowCol, capturedRow, capturedCol);
+                                gameInit.setBoardArray(multiplayerGameLogic.helperFunctions.updateBoardArrayFromOccupiedSquares(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray()));
+                                multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
+                                multiplayerGameLogic.turnManager.switchTurn();
+                                multiplayerGameLogic.turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), multiplayerGameLogic.isHost);
+                                multiplayerGameLogic.checkForAvailableCapturesOnStartTurn();
+                                Log.d(TAG, "onEvent: LISTENER TRIGGERED, DATA UPDATED");
+                            }
+
                         } else {
                             Log.d(TAG, "Current data: null");
                         }
-                    }});
+                    });
+        boardListenerActive = true;
     }
-
-//    public void setTurnListener(String lobbyId){
-//        // Create a reference to the document that contains the turn value
-//        DocumentReference turnRef = db.collection("lobbies").document(lobbyId);
-//
-//// Add a listener to the turn value field
-//        turnRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
-//            @Override
-//            public void onEvent(@Nullable DocumentSnapshot snapshot,
-//                                @Nullable FirebaseFirestoreException e) {
-//                if (e != null) {
-//                    Log.w(TAG, "Listen failed.", e);
-//                    return;
-//                }
-//
-//                // Check if the snapshot exists and has the turn value field
-//                if (snapshot != null && snapshot.exists()) {
-//                    String currentPlayer = snapshot.getString("currentPlayer");
-//
-//                    // Check if it's the current player's turn
-//                    if (currentPlayer.equals(playerId) && turn != isPlayerTurn) {
-//                        // If it's the current player's turn, update the local turn value
-//                        isPlayerTurn = turn;
-//                        // Do something
-//                    }
-//                } else {
-//                    Log.d(TAG, "Current data: null");
-//                }
-//            }
-//        });
-//    }
-
-
 }

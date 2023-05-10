@@ -216,13 +216,16 @@ public class LobbyActivity extends AppCompatActivity {
                 gameData.put("hostUserId", userFirebase);
                 gameData.put("guestUserId", guestId);
                 gameData.put("state", "started");
-                gameData.put("boardArray", null);
-                gameData.put("nodesArray", null);
+                gameData.put("occupiedValueList", null);
                 gameData.put("isHostBoardPlaced", false);
                 gameData.put("isGuestBoardPlaced", false);
-                gameData.put("hostColor", "Black");
-                gameData.put("guestColor", "Red");
                 gameData.put("turn", "Black");
+                gameData.put("wasRow", -1);
+                gameData.put("wasCol", -1);
+                gameData.put("nowRow", -1);
+                gameData.put("nowCol", -1);
+                gameData.put("capturedRow", -1);
+                gameData.put("capturedCol", -1);
                 db.collection("lobbies").document(lobbyId)
                         .delete()
                         .addOnCompleteListener(new OnCompleteListener<Void>() {
