@@ -44,11 +44,9 @@ public class OpenGamesActivity extends AppCompatActivity {
     private List<Lobby> lobbyList;
     private EditText lobbyName;
     private FirebaseFirestore db;
-    private DatabaseReference databaseReference;
     private RecyclerView recyclerView;
     private LobbyAdapter lobbyListAdapter;
     private Button refresh, create;
-    private String userToken;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,7 +78,6 @@ public class OpenGamesActivity extends AppCompatActivity {
             //TODO: add checks here
             if(!lobbyName.getText().toString().isEmpty()){
                 createLobby(lobbyName.getText().toString());
-                Log.d("onTap", "onCreate: Hell, not empty");
             }
             else{
                 lobbyName.setError("Please enter lobby name");
@@ -109,7 +106,12 @@ public class OpenGamesActivity extends AppCompatActivity {
         // Create a data object for the new lobby document
         Map<String, Object> lobbyData = new HashMap<>();
         lobbyData.put("name", lobbyName);
-        lobbyData.put("hostUsername", FirebaseAuth.getInstance().getCurrentUser().getDisplayName());
+        if(auth.getCurrentUser().getDisplayName().isEmpty()){
+            lobbyData.put("hostUsername", shared.getString("username", "User"));
+        }else{
+            lobbyData.put("hostUsername", auth.getCurrentUser().getDisplayName());
+        }
+
         lobbyData.put("currentPlayers", 1);
         lobbyData.put("id" , document.getId());
         lobbyData.put("hostReady", false);
@@ -125,11 +127,14 @@ public class OpenGamesActivity extends AppCompatActivity {
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        Log.d("onTap", "Lobby created successfully!");
                         Intent intent = new Intent(OpenGamesActivity.this, LobbyActivity.class);
                         intent.putExtra("lobbyId", document.getId());
                         intent.putExtra("lobbyName", lobbyName);
-                        intent.putExtra("hostUsername",FirebaseAuth.getInstance().getCurrentUser().getDisplayName());
+                        if(auth.getCurrentUser().getDisplayName().isEmpty()){
+                            intent.putExtra("hostUsername", shared.getString("username", "User"));
+                        }else{
+                            intent.putExtra("hostUsername", auth.getCurrentUser().getDisplayName());
+                        }
                         startActivity(intent);
                     }
                 })
@@ -161,7 +166,6 @@ public class OpenGamesActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         for (QueryDocumentSnapshot document : task.getResult()) {
 
-                            Log.d("onTap", document.getId() + " => " + document.getData());
                             if(document.getLong("currentPlayers") != 2){
                                 Lobby lobby = new Lobby();
                                 lobby.setId(document.getId());
@@ -215,7 +219,8 @@ public class OpenGamesActivity extends AppCompatActivity {
                 intent.putExtra("isHost", false);
                 intent.putExtra("hostUsername", lobby.getHostUsername());
                 intent.putExtra("lobbyName", lobby.getName());
-                if(auth.getCurrentUser().getDisplayName() == null){
+                if(auth.getCurrentUser().getDisplayName().isEmpty()){
+                    Log.d("onTap", "onClick: " + shared.getString("username", "User"));
                     intent.putExtra("guestUsername", shared.getString("username", "User"));
                 }else{
                     intent.putExtra("guestUsername", auth.getCurrentUser().getDisplayName());

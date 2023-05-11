@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private final String  TAG = "onTap";
     private ArFragment arFragment;
-    private Renderable whitePieces, blackPieces, board;
+    private Renderable whitePieces, redPieces, board;
     private Anchor anchor, anchor2;
     Node boardNode;
     AnchorNode anchorNode;

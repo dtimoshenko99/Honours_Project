@@ -1,9 +1,7 @@
 package abertay.uad.ac.uk.myapplication;
 
+import android.content.Intent;
 import android.util.Log;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -14,6 +12,8 @@ import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.ListenerRegistration;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,11 +28,11 @@ public class GameDatabaseManipulations {
     private boolean boardListenerActive = false;
     private boolean placeListenerPlaced = false;
     public ListenerRegistration boardPlaceListener, turnChangeListener;
-    private String TAG = "onTap";
-    private FirebaseFirestore db;
-    private String lobbyId;
-    private GameInit gameInit;
-    private MultiplayerGameLogic multiplayerGameLogic;
+    private final String TAG = "onTap";
+    private final FirebaseFirestore db;
+    private final String lobbyId;
+    private final GameInit gameInit;
+    private final MultiplayerGameLogic multiplayerGameLogic;
     public GameDatabaseManipulations(FirebaseFirestore mDb, String mLobbyId, GameInit gameInit, MultiplayerGameLogic multiplayerGameLogic){
         this.db = mDb;
         this.lobbyId = mLobbyId;
@@ -40,9 +40,8 @@ public class GameDatabaseManipulations {
         this.multiplayerGameLogic = multiplayerGameLogic;
     }
 
-    public void updateBoardPlacedField(boolean isHost, int[][] boardArray, TransformableNode[][] nodeArray) {
+    public void updateBoardPlacedField(boolean isHost) {
         DocumentReference docRef = db.collection("games").document(lobbyId);
-        Log.d(TAG, "updateBoardPlacedField: isHost: " + isHost);
 
         // Update the field of isBoardPlaced for users
         docRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
@@ -53,12 +52,10 @@ public class GameDatabaseManipulations {
                     mapSet.put("isHostBoardPlaced", true);
                     docRef.update(mapSet);
                     userReady = true;
-                    Log.d(TAG, "onSuccess: SUKA EBANAJA OTSJUDA");
                 } else if (!isHost && !userReady) {
                     mapSet.put("isGuestBoardPlaced", true);
                     docRef.update(mapSet);
                     userReady = true;
-                    Log.d(TAG, "onSuccess: SUKA EBANAJA OTSJUDA V2");
                 }
                 docRef.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                     @Override
@@ -67,19 +64,17 @@ public class GameDatabaseManipulations {
                         if (documentSnapshot.getBoolean("isGuestBoardPlaced") && documentSnapshot.getBoolean("isHostBoardPlaced")) {
                             bothBoardsPlaced = true;
                             gameStarted = true;
-                            multiplayerGameLogic.gameStart(gameInit.getBoardArray(), gameInit.getNodesArray());
-                            Log.d(TAG, "onSuccess: SUKA EBANAJA OTSJUDA V3");
+                            multiplayerGameLogic.gameStart();
                         } else {
-                            placeListener(boardArray);
+                            placeListener();
                         }
                     }
                 });
-                Log.d(TAG, "onSuccess: Updated Board Placed Fields");
             }
         });
     }
 
-    private void placeListener(int[][] boardArray) {
+    private void placeListener() {
         if (placeListenerPlaced || bothBoardsPlaced) {
             return;
         }
@@ -88,8 +83,7 @@ public class GameDatabaseManipulations {
         boardPlaceListener = docRef.addSnapshotListener((snapshot, e) -> {
             if (snapshot.getBoolean("isGuestBoardPlaced") && snapshot.getBoolean("isHostBoardPlaced")) {
                 gameStarted = true;
-                multiplayerGameLogic.gameStart(gameInit.getBoardArray(), gameInit.getNodesArray());
-                Log.d(TAG, "placeListener: both boards placed, game started");
+                multiplayerGameLogic.gameStart();
             }
         });
 
@@ -108,6 +102,7 @@ public class GameDatabaseManipulations {
             updateFields.put("turn", switchTurnTo);
         }
 
+        Log.d("onTap", "checkAndUpdateInMultiplayer: Why is there a change in turn " + hasCaptures);
         updateFields.put("wasRow", wasRow);
         updateFields.put("wasCol", wasCol);
         updateFields.put("nowRow", nowRow);
@@ -120,61 +115,67 @@ public class GameDatabaseManipulations {
                 .update(updateFields).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void unused) {
-                Log.d(TAG, "onSuccess: ALL FIELDS ARE UPDATED");
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                Log.d(TAG, "onFailure: Failed to Update: " + e);
             }
         });
     }
 
-    public void listenerToUpdateBoard(){
-        if(boardListenerActive){
+    public void listenerToUpdateBoard() {
+        if (boardListenerActive) {
             return;
         }
 
         turnChangeListener = db.collection("games").document(lobbyId)
-                .addSnapshotListener((snapshot, error) ->{
-                        if (error != null) {
-                            Log.w(TAG, "Listen failed.", error);
-                            return;
-                        }
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null) {
+                        Log.w(TAG, "Listen failed.", error);
+                        return;
+                    }
 
-                        if (snapshot != null && snapshot.exists()) {
-                            int wasRow = snapshot.getLong("wasRow").intValue();
-                            int wasCol = snapshot.getLong("wasCol").intValue();
-                            int nowRow = snapshot.getLong("nowRow").intValue();
-                            int nowCol = snapshot.getLong("nowCol").intValue();
-                            int capturedRow = snapshot.getLong("capturedRow").intValue();
-                            int capturedCol = snapshot.getLong("capturedCol").intValue();
-                            String turn = snapshot.getString("turn");
-                            boolean hasCaptures = snapshot.getBoolean("hasCaptures");
-
+                    if (snapshot != null && snapshot.exists()) {
+                        int wasRow = snapshot.getLong("wasRow").intValue();
+                        int wasCol = snapshot.getLong("wasCol").intValue();
+                        int nowRow = snapshot.getLong("nowRow").intValue();
+                        int nowCol = snapshot.getLong("nowCol").intValue();
+                        int capturedRow = snapshot.getLong("capturedRow").intValue();
+                        int capturedCol = snapshot.getLong("capturedCol").intValue();
+                        String turn = snapshot.getString("turn");
+//                            boolean hasCaptures = snapshot.getBoolean("hasCaptures");
+//                            // TODO: FIx this if have time
 //                            if(hasCaptures){
 //                                multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
 //                                        nowRow, nowCol, capturedRow, capturedCol);
 //                                multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
 //                                multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
 //                                Log.d(TAG, "listenerToUpdateBoard: HAS CAPTURES, UPDATING BOARD, BUT NOT TURN");
+//                                if(!multiplayerGameLogic.gameLogic.hasCaptures(nowCol, nowRow, multiplayerGameLogic.selectedNode) && turn.equals(multiplayerGameLogic.turnManager.getUserColor())){
+//                                    Map<String, Object> isCaptures = new HashMap<>();
+//                                    isCaptures.put("hasCaptures", false);
+//                                    db.collection("collection").document(lobbyId).update(isCaptures);
+//                                }
+//                            }else{
+                        if (multiplayerGameLogic.helperFunctions.isGameOver(gameInit.getBoardArray())) {
+                            Intent intent = new Intent(gameInit.getContext(), EndGameActivity.class);
+                            intent.putExtra("winner", multiplayerGameLogic.turnManager.getUserColor());
+                            intent.putExtra("type", "multiplayer");
+                            gameInit.getContext().startActivity(intent);
+                        } else if (wasCol != -1 && wasRow != -1 && turn.equals(multiplayerGameLogic.turnManager.getUserColor())) {
+                            multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
+                                    nowRow, nowCol, capturedRow, capturedCol);
+                            multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
+                            multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
+                            multiplayerGameLogic.turnManager.switchTurn();
+                            multiplayerGameLogic.turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), multiplayerGameLogic.isHost);
+                            multiplayerGameLogic.gameLogic.checkForAvailableCapturesOnStartTurn();
+                        }
 //                            }
 
-                            if(wasCol != -1 && wasRow != -1 && turn.equals(multiplayerGameLogic.turnManager.getUserColor())) {
-                                multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
-                                        nowRow, nowCol, capturedRow, capturedCol);
-                                multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
-                                multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
-                                multiplayerGameLogic.turnManager.switchTurn();
-                                multiplayerGameLogic.turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), multiplayerGameLogic.isHost);
-                                multiplayerGameLogic.checkForAvailableCapturesOnStartTurn();
-                                Log.d(TAG, "onEvent: LISTENER TRIGGERED, DATA UPDATED");
-                            }
-
-                        } else {
-                            Log.d(TAG, "Current data: null");
-                        }
-                    });
-        boardListenerActive = true;
+                    } else {
+                        Log.d(TAG, "Current data: null");
+                    }
+                });
     }
 }

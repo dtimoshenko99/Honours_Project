@@ -28,7 +28,7 @@ public class MainMenuActivity extends AppCompatActivity {
 
     FirebaseAuth auth;
     FirebaseUser user;
-    TextView gameDate, gameResult;
+    TextView welcomeSmile;
     Button profile, singlePlayer, multiPlayer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,12 +38,8 @@ public class MainMenuActivity extends AppCompatActivity {
         auth = FirebaseAuth.getInstance();
         user = auth.getCurrentUser();
 
-//        if(user.getUid() != null){
-//            getRecentGames(user.getUid());
-//        }
-
-        gameDate = findViewById(R.id.gameDate);
-        gameResult = findViewById(R.id.gameResult);
+        welcomeSmile = findViewById(R.id.welcomeSmile);
+        welcomeSmile.setText("Hello" + new String(Character.toChars(0x1F63A)));
         singlePlayer = findViewById(R.id.singlePlayer);
         multiPlayer = findViewById(R.id.multiPlayer);
         profile = findViewById(R.id.profileButton);
@@ -59,33 +55,5 @@ public class MainMenuActivity extends AppCompatActivity {
             startActivity(new Intent(this, OpenGamesActivity.class));
         });
 
-    }
-
-    private void getRecentGames(String userId) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        CollectionReference gamesRef = db.collection("games");
-
-
-        db.collection("games")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                for (QueryDocumentSnapshot document : task.getResult()) {
-                    if(document.getString("playerId").equals(userId)){
-                        String id = document.getId();
-                        Date date = document.getDate("date");
-                        String result = document.getString("result");
-                        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
-                        String formattedDate = formatter.format(date);
-                        gameResult.setText(result);
-                        gameDate.setText(formattedDate);
-                    }
-                }
-                // Do something with the list of recent games, such as display them in a RecyclerView
-
-            } else {
-                Log.d("onTap", "Error getting recent games: ", task.getException());
-            }
-        });
     }
 }

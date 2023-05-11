@@ -1,40 +1,30 @@
 package abertay.uad.ac.uk.myapplication;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.annotations.Nullable;
-import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.RemoteMessage;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class LobbyActivity extends AppCompatActivity {
 
     private boolean isHost;
-    private String TAG = "onTap";
     private String hostUsername;
     private ListenerRegistration readyFieldListener;
     private boolean opponentReady = false;
@@ -48,7 +38,13 @@ public class LobbyActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_lobby);
+
+        // Get instances of firebase and get current user ID
         db = FirebaseFirestore.getInstance();
+        FirebaseAuth authFirebase = FirebaseAuth.getInstance();
+        userFirebase = authFirebase.getCurrentUser().getUid();
+
+        // Assign viewvs to variables
         opponentFieldReady = findViewById(R.id.opponentReady);
         userFieldReady = findViewById(R.id.userReady);
         readyButton = findViewById(R.id.readyButton);
@@ -56,18 +52,20 @@ public class LobbyActivity extends AppCompatActivity {
         lobbyFieldName = findViewById(R.id.lobbyActivityName);
         opponentUsername = findViewById(R.id.opponentUsername);
         user = findViewById(R.id.playerOneUsername);
+
+        // Get data from last intent
         Intent intent = getIntent();
         intent.getExtras();
         isHost = intent.getBooleanExtra("isHost", true);
 
-        FirebaseAuth authFirebase = FirebaseAuth.getInstance();
-        userFirebase = authFirebase.getCurrentUser().getUid();
 
         getDataAssignListeners(intent,isHost);
 
         readyButton.setOnClickListener(v -> {
             String field = isHost ? "hostReady" : "opponentReady";
-            Log.d(TAG, "onCreate: " + field);
+            hostReady = field.equals("hostReady");
+            opponentReady = !field.equals("hostReady");
+            updateUi();
             updateReadyField(field);
         });
 
@@ -83,32 +81,7 @@ public class LobbyActivity extends AppCompatActivity {
     }
 
     private void updateReadyField(String field) {
-        db.collection("lobbies").document(lobbyId).update(field, true)
-                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        db.collection("lobbies").document(lobbyId).get()
-                                .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-                                    @Override
-                                    public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                        if(opponentReady && hostReady){
-//                                            readyFieldListener.remove();
-//                                            if(isHost){
-//                                                createGame();
-//                                            }
-//                                            Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
-//                                            intent.putExtra("lobbyId", lobbyId);
-//                                            intent.putExtra(isHost ? "hostUserId" : "guestUserId", userFirebase);
-//                                            startActivity(intent);
-                                        } else{
-                                            databaseReadyFieldListener();
-                                            updateUi();
-                                        }
-                                    }
-                                });
-
-                    }
-                });
+        db.collection("lobbies").document(lobbyId).update(field, true);
     }
 
     private void updateUi(){
@@ -124,26 +97,25 @@ public class LobbyActivity extends AppCompatActivity {
 
     private void getDataAssignListeners(Intent intent,boolean isHost) {
         if(!isHost){
+            // Get data from last intent and set text Fields
             lobbyId = intent.getStringExtra("lobbyId");
             String lobbyName = intent.getStringExtra("lobbyName");
             String hostUsername = intent.getStringExtra("hostUsername");
             String guestUsername = intent.getStringExtra("guestUsername");
-            Log.d(TAG, "getDataAssignListeners: " + hostUsername + " " + guestUsername);
-            Log.d(TAG, "getDataAssignListeners: lobbyName: " + lobbyName + " " + lobbyId);
-            userFieldReady.setText("No");
+            userFieldReady.setText("Not Ready");
             opponentUsername.setText(hostUsername);
             user.setText(guestUsername);
             lobbyFieldName.setText(lobbyName);
-            // 1st HERE
             updateOnJoin(guestUsername);
 
         }else{
+            // Get data from last intent and set text Fields
             lobbyId = intent.getStringExtra("lobbyId");
             lobbyFieldName.setText(intent.getStringExtra("lobbyName"));
             hostUsername = intent.getStringExtra("hostUsername");
             user.setText(hostUsername);
-            userFieldReady.setText("No");
-            opponentFieldReady.setText("No");
+            userFieldReady.setText("Not Ready");
+            opponentFieldReady.setText("Not Ready");
             opponentUsername.setText("Waiting...");
             databaseReadyFieldListener();
         }
@@ -151,6 +123,7 @@ public class LobbyActivity extends AppCompatActivity {
 
 
     private void updateOnJoin(String guestName) {
+        // Update fields of lobby in DB and assign listener
         Map<String, Object> lobbyData = new HashMap<>();
         lobbyData.put("currentPlayers", 2);
         lobbyData.put("opponentReady", false);
@@ -170,11 +143,8 @@ public class LobbyActivity extends AppCompatActivity {
 
                         if(guestReady && isReady){
                             readyFieldListener.remove();
-
                             if(isHost){
-
                                 createGame();
-
                             }
                                 Intent intent = new Intent(LobbyActivity.this, MultiPlayerActivity.class);
                                 intent.putExtra("lobbyId", lobbyId);
@@ -191,10 +161,10 @@ public class LobbyActivity extends AppCompatActivity {
     }
 
     private void databaseReadyFieldListener(){
+        // Assign a listener for a Ready fields in database
        readyFieldListener = db.collection("lobbies").document(lobbyId)
                 .addSnapshotListener((snapshot, e ) ->{
                    if(e != null){
-                       Log.d(TAG, "databaseReadyFieldListener: Failed to listen :(((");
                    }
 
                    if(snapshot != null && snapshot.exists()){
@@ -225,7 +195,6 @@ public class LobbyActivity extends AppCompatActivity {
                                startActivity(intent);
                            }
                            updateUi();
-                       }else{
                        }
                    }
                 });
@@ -233,9 +202,7 @@ public class LobbyActivity extends AppCompatActivity {
 
 
     private void createGame(){
-
-
-
+        // Get guest ID and create a game in database
         db.collection("lobbies").document(lobbyId).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
             @Override
             public void onSuccess(DocumentSnapshot documentSnapshot) {
@@ -245,7 +212,6 @@ public class LobbyActivity extends AppCompatActivity {
                 gameData.put("hostUserId", userFirebase);
                 gameData.put("guestUserId", guestId);
                 gameData.put("state", "started");
-                gameData.put("occupiedValueList", null);
                 gameData.put("isHostBoardPlaced", false);
                 gameData.put("isGuestBoardPlaced", false);
                 gameData.put("turn", "Black");
@@ -255,7 +221,6 @@ public class LobbyActivity extends AppCompatActivity {
                 gameData.put("nowCol", -1);
                 gameData.put("capturedRow", -1);
                 gameData.put("capturedCol", -1);
-                gameData.put("captured", false);
                 gameData.put("hasCaptures", false);
 
                 db.collection("games").document(lobbyId)
@@ -263,7 +228,6 @@ public class LobbyActivity extends AppCompatActivity {
                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
-                                Log.d(TAG, "onComplete: deleted lobby, created a game");
                             }
                         });
             }
@@ -275,6 +239,7 @@ public class LobbyActivity extends AppCompatActivity {
     }
 
     private void updateFieldsAndLeave() {
+        // Update fields in database if guest leaves
         Map<String, Object> lobbyData = new HashMap<>();
         lobbyData.put("currentPlayers", 1);
         lobbyData.put("opponentReady", false);
@@ -284,7 +249,6 @@ public class LobbyActivity extends AppCompatActivity {
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void unused) {
-                        Log.d(TAG, "onSuccess: Left and updated fields");
                         Intent intent = new Intent(LobbyActivity.this, OpenGamesActivity.class);
                         startActivity(intent);
                     }
@@ -292,13 +256,12 @@ public class LobbyActivity extends AppCompatActivity {
     }
 
     private void deleteLobbyAndLeave() {
-        Log.d(TAG, "deleteLobbyAndLeave: " + lobbyId);
+        // Delete lobby in database if host leaves
         db.collection("lobbies").whereEqualTo("id", lobbyId).get()
                 .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
                     @Override
                     public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
                         List<DocumentSnapshot> doc =  queryDocumentSnapshots.getDocuments();
-                        Log.d(TAG, "onSuccess: " + doc);
                         String id = doc.get(0).getId();
                         db.collection("lobbies").document(id).delete();
                         startActivity(new Intent(LobbyActivity.this, OpenGamesActivity.class));

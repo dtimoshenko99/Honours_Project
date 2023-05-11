@@ -14,7 +14,7 @@ import com.google.ar.sceneform.ux.TransformableNode;
 public class GameTurnManager {
     public enum Player {
         RED("redPiece", "red"),
-        BLACK("blackPiece", "black");
+        WHITE("whitePiece", "white");
 
         private String nodeName;
         private String color;
@@ -42,7 +42,7 @@ public class GameTurnManager {
         if(random == 1){
             currentPlayer = Player.RED;
         } else{
-            currentPlayer = Player.BLACK;
+            currentPlayer = Player.WHITE;
         }
         this.context = context;
     }
@@ -50,12 +50,12 @@ public class GameTurnManager {
     public GameTurnManager(Context context, boolean isHost){
         this.context = context;
         this.isHost = isHost;
-        currentPlayer = Player.BLACK;
+        currentPlayer = Player.WHITE;
     }
 
     public String getUserColor(){
         if(isHost){
-            userColor = "black";
+            userColor = "white";
         }else{
             userColor = "red";
         }
@@ -65,7 +65,7 @@ public class GameTurnManager {
     public boolean isMoveAllowed(String nodeName) {
         if (currentPlayer == Player.RED && nodeName.equals("redPiece")) {
             return true;
-        } else if (currentPlayer == Player.BLACK && nodeName.equals("blackPiece")) {
+        } else if (currentPlayer == Player.WHITE && nodeName.equals("whitePiece")) {
             return true;
         } else {
             return false;
@@ -73,14 +73,11 @@ public class GameTurnManager {
     }
 
     public void switchTurn() {
-        Log.d("onTap", "switchTurn: player was: " + currentPlayer);
         if (currentPlayer == Player.RED) {
-            currentPlayer = Player.BLACK;
+            currentPlayer = Player.WHITE;
         } else {
             currentPlayer = Player.RED;
         }
-
-        Log.d("onTap", "switchTurn: player now: " + currentPlayer);
     }
 
     private void updateSelectableNodes(ArFragment arFragment ,String playersNode) {
@@ -141,13 +138,13 @@ public class GameTurnManager {
 
     public void switchTurnAndUpdateSelectableNodes(ArFragment arFragment) {
         switchTurn();
-        String nodeName = (currentPlayer == Player.RED) ? "redPiece" : "blackPiece";
+        String nodeName = (currentPlayer == Player.RED) ? "redPiece" : "whitePiece";
         updateSelectableNodes(arFragment, nodeName);
     }
 
     public void updateTurnIndicator() {
         TextView turnIndicator = (TextView) ((Activity)context).findViewById(R.id.turnIndicator);
-        String currentPlayerName = currentPlayer == RED ? "Red" : "Black";
+        String currentPlayerName = currentPlayer == RED ? "Red" : "White";
         turnIndicator.setText("Turn: " + currentPlayerName);
     }
 
@@ -158,10 +155,10 @@ public class GameTurnManager {
         } else if(currentPlayer == Player.RED && !isHost){
             nodeName = "redPiece";
             updateSelectableNodes(arFragment, nodeName);
-        } else if(currentPlayer == Player.BLACK && isHost){
-            nodeName = "blackPiece";
+        } else if(currentPlayer == Player.WHITE && isHost){
+            nodeName = "whitePiece";
             updateSelectableNodes(arFragment, nodeName);
-        }else if(currentPlayer == Player.BLACK && !isHost){
+        }else if(currentPlayer == Player.WHITE && !isHost){
             updateAllNodesSelectableToFalse(arFragment);
         }
         updateTurnIndicatorMultiplayer();
@@ -174,10 +171,10 @@ public class GameTurnManager {
             currentPlayerName = "Red's Turn, Please Wait";
         } else if(currentPlayer == Player.RED && !isHost){
             currentPlayerName = "Your Turn - Red";
-        } else if(currentPlayer == Player.BLACK && isHost){
-            currentPlayerName = "Your Turn - Black";
-        }else if(currentPlayer == Player.BLACK && !isHost){
-            currentPlayerName = "Black's Turn, Please Wait";
+        } else if(currentPlayer == Player.WHITE && isHost){
+            currentPlayerName = "Your Turn - White";
+        }else if(currentPlayer == Player.WHITE && !isHost){
+            currentPlayerName = "White's Turn, Please Wait";
         }
         turnIndicator.setText("Turn: " + currentPlayerName);
     }

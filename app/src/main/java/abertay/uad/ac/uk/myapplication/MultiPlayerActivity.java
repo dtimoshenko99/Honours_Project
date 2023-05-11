@@ -1,6 +1,5 @@
 package abertay.uad.ac.uk.myapplication;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -8,7 +7,6 @@ import androidx.fragment.app.FragmentOnAttachListener;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import com.google.ar.core.Config;
@@ -22,9 +20,9 @@ import com.google.ar.sceneform.SceneView;
 import com.google.ar.sceneform.Sceneform;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.BaseArFragment;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.FirebaseFirestore;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 public class MultiPlayerActivity extends AppCompatActivity implements
         FragmentOnAttachListener,
@@ -63,11 +61,6 @@ public class MultiPlayerActivity extends AppCompatActivity implements
             isHost = false;
         }
 
-        Log.d("onTap", "onCreate: " + lobbyId);
-        Log.d("onTap", "onCreate: " + hostUserId);
-        Log.d("onTap", "onCreate: " + guestUserId);
-        Log.d("onTap", "onCreate: " + isHost);
-
         getSupportFragmentManager().addFragmentOnAttachListener(this);
 
         if (savedInstanceState == null) {
@@ -91,7 +84,6 @@ public class MultiPlayerActivity extends AppCompatActivity implements
         gameInitialization = new GameInit(this, arFragment, turnManager, this, gameType);
         gameInitialization.loadModels();
         gameLogic = new GameLogic(turnManager, gameInitialization);
-        Log.d("onTap", "onAttachFragment: initializing MGameLogic");
         multiplayerGameLogic = new MultiplayerGameLogic(turnManager, gameLogic, gameInitialization, db, lobbyId, isHost);
     }
 
@@ -114,13 +106,12 @@ public class MultiPlayerActivity extends AppCompatActivity implements
     @Override
     public void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
         gameInitialization.createAnchors(hitResult, arFragment);
-        Log.d("onTap", "onTapPlane: TAP ON PLANE");
-        multiplayerGameLogic.gameStart(gameInitialization.getBoardArray(), gameInitialization.getNodesArray());
+        multiplayerGameLogic.gameStart();
     }
 
     @Override
     public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
-
+        // do nothing on tap
     }
 
     @Override

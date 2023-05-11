@@ -82,8 +82,6 @@ public class SinglePlayerActivity extends AppCompatActivity implements
     @Override
     public void onViewCreated(ArSceneView arSceneView) {
         arFragment.setOnViewCreatedListener(null);
-
-        // Fine adjust the maximum frame rate
         arSceneView.setFrameRateFactor(SceneView.FrameRate.FULL);
     }
 
@@ -94,7 +92,7 @@ public class SinglePlayerActivity extends AppCompatActivity implements
 
     @Override
     public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
-
+        // do nothing on tap
     }
 
     @Override

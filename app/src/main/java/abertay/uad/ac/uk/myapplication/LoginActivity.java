@@ -5,41 +5,24 @@ import static android.widget.Toast.LENGTH_SHORT;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
-import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.facebook.AccessToken;
-import com.facebook.CallbackManager;
-import com.facebook.FacebookCallback;
-import com.facebook.FacebookException;
-import com.facebook.FacebookSdk;
-import com.facebook.internal.Utility;
-import com.facebook.internal.Validate;
-import com.facebook.login.Login;
-import com.facebook.login.LoginManager;
-import com.facebook.login.LoginResult;
-import com.facebook.login.widget.LoginButton;
-import com.google.android.filament.utils.Utils;
+
 import com.google.android.gms.auth.api.identity.BeginSignInRequest;
 import com.google.android.gms.auth.api.identity.BeginSignInResult;
 import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.auth.api.identity.SignInClient;
 import com.google.android.gms.auth.api.identity.SignInCredential;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.CommonStatusCodes;
@@ -49,7 +32,6 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
@@ -58,8 +40,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.util.Arrays;
-import java.util.List;
+
 import java.util.Objects;
 
 public class LoginActivity extends AppCompatActivity {
@@ -73,14 +54,11 @@ public class LoginActivity extends AppCompatActivity {
     String emailText, passwordText;
     TextView createButton;
     private FirebaseAuth auth;
-    LoginButton faceBookLogin;
-    CallbackManager callbackManager;
     Button loginButton;
 
     FirebaseFirestore firestoreDB;
     FirebaseUser user;
     String patt = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+";
-    String passPatt = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$";
 
     private SignInClient oneTapClient;
     private BeginSignInRequest signInRequest;
@@ -96,7 +74,6 @@ public class LoginActivity extends AppCompatActivity {
         editor = shared.edit();
         checkUser();
         boolean signedin = isSignedIn();
-        Log.d("onTap", "onCreate: signed?" + signedin);
 
         setContentView(R.layout.activity_login);
 
@@ -118,12 +95,6 @@ public class LoginActivity extends AppCompatActivity {
 
         loginButton = findViewById(R.id.loginButton);
 
-        callbackManager = CallbackManager.Factory.create();
-
-        faceBookLogin = findViewById(R.id.fbButton);
-        faceBookLogin.setReadPermissions(Arrays.asList("public_profile", "email"));
-
-
         firestoreDB = FirebaseFirestore.getInstance();
 
         email = findViewById(R.id.textEmail);
@@ -135,25 +106,6 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         loginButton.setOnClickListener(view -> signIn());
-
-        faceBookLogin.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
-            @Override
-            public void onSuccess(LoginResult loginResult) {
-                facebookLoginAccessToken(loginResult.getAccessToken());
-//                progress.setVisibility(View.VISIBLE);
-            }
-
-            @Override
-            public void onCancel() {
-
-//                progress.setVisibility(View.INVISIBLE);
-            }
-            @Override
-            public void onError(@NonNull FacebookException error) {
-//                progress.setVisibility(View.INVISIBLE);
-                Toast.makeText(LoginActivity.this, "Error occurred, try again!", LENGTH_SHORT).show();
-            }
-        });
 
     }
 
@@ -192,6 +144,8 @@ public class LoginActivity extends AppCompatActivity {
                         if (task.isSuccessful() && !task.getResult().isEmpty()) {
                             QuerySnapshot doc = task.getResult();
                             String username = Objects.requireNonNull(doc.getDocuments().get(0).get("username")).toString();
+                            Log.d("onTap", "getdisplay name" + user.getDisplayName());
+                            Log.d("onTap", "checkUser: " + (user.getDisplayName().isEmpty()));
                             editor.putString("username", username);
                             editor.apply();
                             startActivity(new Intent(LoginActivity.this, MainMenuActivity.class));
@@ -213,18 +167,13 @@ public class LoginActivity extends AppCompatActivity {
         } else if (passwordText.isEmpty()) {
             password.setError("Please enter your password.");
         } else {
-            // ADD a progress here
-//            progress.setVisibility(View.VISIBLE);
-
             auth.signInWithEmailAndPassword(emailText, passwordText)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
                             editor.putString("email", emailText).apply();
-//                            progress.setVisibility(View.INVISIBLE);
                             startActivity(new Intent(this, MainMenuActivity.class));
                         }
                     }).addOnFailureListener(e -> {
-//                progress.setVisibility(View.INVISIBLE);
                 Toast.makeText(this, "Authentication failed.",
                         LENGTH_SHORT).show();
                 Toast.makeText(this, "SignIn()" + e.getLocalizedMessage(), LENGTH_SHORT).show();
@@ -232,49 +181,8 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
-    private void facebookLoginAccessToken(AccessToken token) {
-
-        AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
-        auth.signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        // Sign in success, update UI with the signed-in user's information
-                        FirebaseUser user = auth.getCurrentUser();
-                        String id = user.getUid();
-                        String email = user.getEmail();
-                        String name = user.getDisplayName();
-                        editor.putString("email", email).apply();
-                        firestoreDB.collection("users").whereEqualTo("email", email)
-                                .get().addOnCompleteListener(task1 -> {
-                            if(task1.isSuccessful() && task1.getResult().isEmpty()){
-//                                progress.setVisibility(View.INVISIBLE);
-                                Intent i = new Intent(LoginActivity.this, FacebookUsername.class);
-                                i.putExtra("uID", id);
-                                i.putExtra("userEmail", email);
-                                i.putExtra("name", name);
-                                editor.putString("email", email).apply();
-                                startActivity(i);
-                            }else if(task1.isSuccessful() && !task1.getResult().isEmpty()){
-                                QuerySnapshot doc = task1.getResult();
-                                String username = doc.getDocuments().get(0).get("username").toString();
-                                editor.putString("username", username).apply();
-                                startActivity(new Intent(LoginActivity.this, MainMenuActivity.class));
-                            }
-                        }).addOnFailureListener(e -> Toast.makeText(LoginActivity.this, ""+e.getLocalizedMessage(), LENGTH_SHORT).show());
-
-
-                    } else {
-                        // If sign in fails, display a message to the user.
-                        Toast.makeText(LoginActivity.this, "Authentication failed.",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                });
-
-    }
-
     @Override
     protected void onActivityResult ( int requestCode, int resultCode, Intent data){
-        callbackManager.onActivityResult(requestCode, resultCode, data);
         super.onActivityResult(requestCode, resultCode, data);
 
         switch (requestCode) {
@@ -290,12 +198,9 @@ public class LoginActivity extends AppCompatActivity {
                                     public void onComplete(@NonNull Task<AuthResult> task) {
                                         if (task.isSuccessful()) {
                                             checkAndCreate(credential, idToken);
-                                            FirebaseUser user = auth.getCurrentUser();
-                                            Log.d("onTap", "onComplete: user: +" + user);
                                         } else {
                                             // If sign in fails, display a message to the user.
                                             Log.w("onTap", "signInWithCredential:failure", task.getException());
-                                            updateUi(null);
                                         }
                                     }
                                 });
@@ -303,27 +208,19 @@ public class LoginActivity extends AppCompatActivity {
                 } catch (ApiException e) {
                     switch (e.getStatusCode()) {
                         case CommonStatusCodes.CANCELED:
-                            Log.d("onTap", "One-tap dialog was closed.");
                             // Don't re-prompt the user.
                             showOneTapUI = false;
                             break;
                         case CommonStatusCodes.NETWORK_ERROR:
-                            Log.d("onTap", "One-tap encountered a network error.");
                             // Try again or just ignore.
                             break;
                         default:
-                            Log.d("onTap", "Couldn't get credential from result."
-                                    + e.getLocalizedMessage());
                             break;
                     }
                 }
                 break;
         }
 
-    }
-
-    private void updateUi(Object o) {
-        Log.d("onTap", "updateUi: " + "hello");
     }
 
     private void checkAndCreate(SignInCredential credential, String idToken){

@@ -35,20 +35,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GameInit {
-    private Context context;
-    private ArFragment arFragment;
-    public Renderable redPiece, blackPieces, board;
+    private final Context context;
+    private final ArFragment arFragment;
+    public Renderable redPiece, whitePieces, board;
     private Anchor mainAnchor;
     private Node boardNode;
-    private AnchorNode anchorNode;
     public TransformableNode redHighlightNode, greenHighlightNode, secondGreenHighlightNode, thirdGreenHighlightNode, fourthGreenHighlightNode;
     public TransformableNode[] greenHighlightArray = new TransformableNode[4];
     GameTurnManager turnManager;
-    private OnPieceTouchListener onPieceTouchListener;
+    private final OnPieceTouchListener onPieceTouchListener;
     private TransformableNode[][] nodesArray;
     ModelRenderable cubeRenderable;
-    private String gameType;
-    public List<Integer> occupiedSquares = new ArrayList<>();
+    public final String gameType;
 
     private int[][] boardArray = {
             {0, 1, 0, 1, 0, 1, 0, 1},
@@ -62,7 +60,7 @@ public class GameInit {
     }; // 1 - black pieces, 2 - red
 
     // Map to hold Position to Square variables
-    private List<Vector3> squareWorldPositions = new ArrayList<>();
+    private final List<Vector3> squareWorldPositions = new ArrayList<>();
 
     public List<Vector3> getSquareWorldPositions(){
         return squareWorldPositions;
@@ -126,15 +124,26 @@ public class GameInit {
                 .setAsyncLoadEnabled(true)
                 .build()
                 .thenAccept(piecesModel -> {
-                    blackPieces = piecesModel;
                     redPiece = piecesModel;
+                })
+                .exceptionally(throwable -> {
+                    Toast.makeText(context, "Unable to load red pieces" + throwable, Toast.LENGTH_LONG).show();
+                    return null;
+                });
+        ModelRenderable.builder()
+                .setSource(context, Uri.parse("models/blackPieces/scene.gltf"))
+                .setIsFilamentGltf(true)
+                .setAsyncLoadEnabled(true)
+                .build()
+                .thenAccept(piecesModel -> {
+                    whitePieces = piecesModel;
                 })
                 .exceptionally(throwable -> {
                     Toast.makeText(context, "Unable to load white pieces" + throwable, Toast.LENGTH_LONG).show();
                     return null;
                 });
 
-        MaterialFactory.makeTransparentWithColor(context, new Color(1f, 0, 0, 1f))
+        MaterialFactory.makeTransparentWithColor(context, new Color(1f, 0, 0, 0.5f))
                 .thenAccept(material -> {
                     cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
 
@@ -148,7 +157,7 @@ public class GameInit {
                     redHighlightNode.setEnabled(false);
                 });
 
-        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 0.5f))
                 .thenAccept(material -> {
                     cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
 
@@ -162,7 +171,7 @@ public class GameInit {
                     greenHighlightNode.setSelectable(false);
                     greenHighlightArray[0] = greenHighlightNode;
                 });
-        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 0.5f))
                 .thenAccept(material -> {
                     cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
 
@@ -176,7 +185,7 @@ public class GameInit {
                     secondGreenHighlightNode.setSelectable(false);
                     greenHighlightArray[1] = secondGreenHighlightNode;
                 });
-        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 0.5f))
                 .thenAccept(material -> {
                     cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
 
@@ -190,7 +199,7 @@ public class GameInit {
                     thirdGreenHighlightNode.setEnabled(false);
                     greenHighlightArray[2] = thirdGreenHighlightNode;
                 });
-        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 1f))
+        MaterialFactory.makeTransparentWithColor(context, new Color(0f, 1f, 0, 0.5f))
                 .thenAccept(material -> {
                     cubeRenderable = ShapeFactory.makeCube(new Vector3(0.118f, 0.001f, 0.118f), Vector3.zero(), material);
 
@@ -229,7 +238,7 @@ public class GameInit {
             Pose newTranslationPose = Pose.makeTranslation(newPosition.x, newPosition.y, newPosition.z);
 
             // Create a new rotation Pose from the original HitResult rotation
-            Pose newRotationPose = Pose.makeRotation(0, -0.05f, 0, 0);
+            Pose newRotationPose = Pose.makeRotation(0, 0, 0, 0);
 
             // Combine the translation and rotation Poses
             Pose newPose = newTranslationPose.compose(newRotationPose);
@@ -237,7 +246,7 @@ public class GameInit {
             // Create an Anchor at the new Pose
             mainAnchor = arFragment.getArSceneView().getSession().createAnchor(newPose);
 
-            anchorNode = new AnchorNode(mainAnchor);
+            AnchorNode anchorNode = new AnchorNode(mainAnchor);
             anchorNode.setParent(arFragment.getArSceneView().getScene());
 
             // Create a Node to hold anchorNode
@@ -245,7 +254,7 @@ public class GameInit {
             boardNode.setParent(anchorNode);
             boardNode.setRenderable(this.board);
             boardNode.setLocalScale(new Vector3(0.02f, 0.02f, 0.02f));
-            boardNode.setLocalPosition(new Vector3(0f, -0.10f, 0f));
+            boardNode.setLocalPosition(new Vector3(0f, -0.02f, 0f));
 
             // Rotate the board 90 degrees
             Quaternion rotationLocal = Quaternion.axisAngle(new Vector3(0.0f, 1.0f, 0.0f),  90);
@@ -264,30 +273,38 @@ public class GameInit {
             //Decide who plays first and update Node's selectivity
 
         } else {
-            Toast.makeText(context, "The board is already placed, you can change the position by moving the board", Toast.LENGTH_LONG).show();
+            Toast.makeText(context, "The board has already been placed, you can't change the position.", Toast.LENGTH_LONG).show();
         }
     }
 
     // POPULATE BOARD WITH PIECES
     private void populateBoard() {
+        // Get the world position of the board node
         float boardX = boardNode.getWorldPosition().x - 0.415f;
         float boardY = boardNode.getWorldPosition().y + 0.05f;
         float boardZ = boardNode.getWorldPosition().z - 0.415f;
+
+        // Set the size of each square
         float squareSize = 0.235f;
 
+        // Iterate through each row and column of the board
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
+                // Calculate the world position of the current square
                 float squareX = boardX + col * (squareSize / 2);
                 float squareY = boardY;
                 float squareZ = boardZ + row * (squareSize / 2);
 
-
+                // Add the world position of the square to the squareWorldPositions list
                 squareWorldPositions.add(new Vector3(squareX, squareY, squareZ));
+
+                // Get the piece type from the board array
                 int pieceType = boardArray[row][col];
-                // Create and Populate black nodes
+
+                // Create and populate black nodes
                 if (pieceType == 1) {
-                    String BLACK_NODE = "blackPiece";
-                    createPieceNode(squareX, squareY, squareZ, BLACK_NODE, row, col);
+                    String WHITE_NODE = "whitePiece";
+                    createPieceNode(squareX, squareY, squareZ, WHITE_NODE, row, col);
                 }
                 // Create and populate red nodes
                 else if (pieceType == 2) {
@@ -298,36 +315,64 @@ public class GameInit {
         }
     }
 
+
     private void createPieceNode(float x, float y, float z, String node, int row, int col) {
+        // Create a pose for the piece anchor
         Pose pose = Pose.makeTranslation(x, y, z);
+
+        // Create an anchor for the piece
         Anchor pieceAnchor = arFragment.getArSceneView().getSession().createAnchor(pose);
 
-
+        // Create an anchor node and set its parent to the AR scene
         AnchorNode pieceAnchorNode = new AnchorNode(pieceAnchor);
         pieceAnchorNode.setParent(arFragment.getArSceneView().getScene());
 
+        // Create a transformable node for the piece and set its parent to the anchor node
         TransformableNode piece = new TransformableNode(arFragment.getTransformationSystem());
         piece.setParent(pieceAnchorNode);
 
+        // Store the piece node in the nodes array at the given row and column indices
         nodesArray[row][col] = piece;
 
-        if(node.equals("redPiece")){
+        // Set the renderable based on the node type (redPiece or blackPiece)
+        if (node.equals("redPiece")) {
             piece.setRenderable(redPiece);
-        }else{
-            piece.setRenderable(blackPieces);
+        } else {
+            piece.setRenderable(whitePieces);
         }
+
+        // Set the piece as selectable and enable it
         piece.setSelectable(true);
         piece.setEnabled(true);
+
+        // Rotate the piece
         Quaternion oldRotation1 = piece.getLocalRotation();
-        Quaternion newRotation1 = Quaternion.axisAngle(new Vector3(1.0f, 0.0f, 0.0f),  90);
-        piece.setLocalRotation(Quaternion.multiply(oldRotation1,newRotation1));
+        Quaternion newRotation1 = Quaternion.axisAngle(new Vector3(1.0f, 0.0f, 0.0f), 270);
+        piece.setLocalRotation(Quaternion.multiply(oldRotation1, newRotation1));
+
+        // Set the min and max scale for the piece
         piece.getScaleController().setMinScale(0.002f);
         piece.getScaleController().setMaxScale(0.003f);
+
+        // Set the local and world positions of the piece
         piece.setLocalPosition(new Vector3(0, 0.05f, 0));
         piece.setWorldPosition(new Vector3(x, y, z));
+
+        // Set the name of the piece
         piece.setName(node);
-        piece.setOnTouchListener((hitTestResult, event) -> onPieceTouchListener.onPieceTouch(hitTestResult, event));
-        pieceAnchorNode.setWorldPosition(new Vector3(x, y, z));
+
+        if(gameType.equals("multiplayer")){
+            // Set the touch listener for the piece for Multiplayer
+            piece.setOnTouchListener(onPieceTouchListener::onPieceTouch);
+        }else{
+            // Set the touch listener for the piece for
+            piece.setOnTouchListener(onPieceTouchListener::onPieceTouch);
+
+        }
+
+        // Set the world position of the piece anchor node
+//        pieceAnchorNode.setWorldPosition(new Vector3(x, y, z));
     }
+
 
 }
