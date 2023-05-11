@@ -75,7 +75,6 @@ public class OpenGamesActivity extends AppCompatActivity {
 
         create = findViewById(R.id.createLobbyButton);
         create.setOnClickListener(v -> {
-            //TODO: add checks here
             if(!lobbyName.getText().toString().isEmpty()){
                 createLobby(lobbyName.getText().toString());
             }

@@ -34,10 +34,8 @@ public class SignUpActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private FirebaseUser user;
     FirebaseFirestore firestoreDB;
-//    FirebaseFirestore database;
 
     String emailPatt = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+";
-    String passPatt = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$";
     String usernamePatt = "[^A-Za-z0-9]";
 
     ImageView backButton;
@@ -80,18 +78,15 @@ public class SignUpActivity extends AppCompatActivity {
         String passwordText = password.getText().toString();
         String confPasswordText = confPassword.getText().toString();
 
-        // TODO: DOn't forget about these
-//        if(!emailText.matches(emailPatt)){
-//            email.setError("Please enter correct email.");
-//        }else if(passwordText.isEmpty()){
-//            password.setError("Please enter correct password.");
-//        }else if(passwordText.equals(confPasswordText)){
-//            confPassword.setError("Passwords don't match.");
-//        }else if(!passwordText.matches(passPatt)){
-//            password.setError("Password needs to have: at least 1 number, 1 lower case, 1 uppercase, one of the following characters: ! @ # $ ( ), 8-20 characters ");
-//        }else if(username.getText().toString().matches(usernamePatt)){
-//            username.setError("Only letters and numbers are available.");
-//        }else{
+        if(!emailText.matches(emailPatt)){
+            email.setError("Please enter correct email.");
+        }else if(passwordText.isEmpty()){
+            password.setError("Please enter correct password.");
+        }else if(!passwordText.equals(confPasswordText)){
+            confPassword.setError("Passwords don't match.");
+        }else if(username.getText().toString().matches(usernamePatt)){
+            username.setError("Only letters and numbers are available.");
+        }else{
             progressBar.setVisibility(View.VISIBLE);
 
             auth.createUserWithEmailAndPassword(emailText, passwordText)
@@ -107,7 +102,7 @@ public class SignUpActivity extends AppCompatActivity {
                         }
                     });
 
-//        }
+        }
 
     }
 

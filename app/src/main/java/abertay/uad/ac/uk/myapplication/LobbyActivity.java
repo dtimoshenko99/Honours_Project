@@ -271,6 +271,6 @@ public class LobbyActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // TODO: Dialog : really want to leave this lobby?
+        // do nothing
     }
 }
