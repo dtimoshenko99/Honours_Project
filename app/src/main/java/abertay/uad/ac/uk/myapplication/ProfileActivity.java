@@ -150,7 +150,7 @@ public class ProfileActivity extends AppCompatActivity {
     private void signOut() {
         new AlertDialog.Builder(this)
                 .setTitle("Decision")
-                .setMessage("Are you sure you want to sighn out?")
+                .setMessage("Are you sure you want to sign out?")
                 .setPositiveButton(android.R.string.yes, (dialog, which) -> {
                     auth.signOut();
                     LoginManager.getInstance().logOut();

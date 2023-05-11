@@ -17,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.facebook.login.Login;
 import com.google.android.gms.auth.api.identity.BeginSignInRequest;
 import com.google.android.gms.auth.api.identity.BeginSignInResult;
 import com.google.android.gms.auth.api.identity.Identity;
@@ -197,10 +198,11 @@ public class LoginActivity extends AppCompatActivity {
                                     @Override
                                     public void onComplete(@NonNull Task<AuthResult> task) {
                                         if (task.isSuccessful()) {
-                                            checkAndCreate(credential, idToken);
+                                            Toast.makeText(LoginActivity.this, "Success!", Toast.LENGTH_LONG).show();
+                                            startActivity(new Intent(LoginActivity.this, MainMenuActivity.class));
                                         } else {
                                             // If sign in fails, display a message to the user.
-                                            Log.w("onTap", "signInWithCredential:failure", task.getException());
+                                            Toast.makeText(LoginActivity.this, "Not successful!", Toast.LENGTH_LONG).show();
                                         }
                                     }
                                 });
@@ -223,28 +225,6 @@ public class LoginActivity extends AppCompatActivity {
 
     }
 
-    private void checkAndCreate(SignInCredential credential, String idToken){
-        String displayName = credential.getDisplayName();
-        String email = credential.getId();
-        editor.putString("email", email).apply();
-        firestoreDB.collection("users").whereEqualTo("email", email)
-                .get().addOnCompleteListener(task1 -> {
-            if(task1.isSuccessful() && task1.getResult().isEmpty()){
-//                                progress.setVisibility(View.INVISIBLE);
-                Intent i = new Intent(LoginActivity.this, FacebookUsername.class);
-                i.putExtra("uID", idToken);
-                i.putExtra("userEmail", email);
-                i.putExtra("name", displayName);
-                editor.putString("email", email).apply();
-                startActivity(i);
-            }else if(task1.isSuccessful() && !task1.getResult().isEmpty()){
-                QuerySnapshot doc = task1.getResult();
-                String username = doc.getDocuments().get(0).get("username").toString();
-                editor.putString("username", username).apply();
-                startActivity(new Intent(LoginActivity.this, MainMenuActivity.class));
-            }
-        }).addOnFailureListener(e -> Toast.makeText(LoginActivity.this, ""+e.getLocalizedMessage(), LENGTH_SHORT).show());
-    }
     @Override
     protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
         try{
