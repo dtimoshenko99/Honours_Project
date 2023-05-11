@@ -190,13 +190,9 @@ public class MultiplayerGameLogic {
                         break;
                     case MotionEvent.ACTION_MOVE:
                         // Handle motion while moving the piece
-//                        if(selectedNode.getWorldPosition().y < gameInit.getBoardNode().getWorldPosition().y + 0.03f || selectedNode.getWorldPosition().y > gameInit.getBoardNode().getWorldPosition().y + 0.06f){
-//                            selectedNode.setWorldPosition(new Vector3(selectedNode.getWorldPosition().x, gameInit.getBoardNode().getWorldPosition().y + 0.05f, selectedNode.getWorldPosition().z));
-//                        }
                         break;
                     case MotionEvent.ACTION_UP:
                         // Drop the piece when the touch is released and check if it is on top of the board
-//                        selectedNode.setWorldPosition(new Vector3(selectedNode.getWorldPosition().x, gameInit.getBoardNode().getWorldPosition().y + 0.05f, selectedNode.getWorldPosition().z));
                         pieceDroppedMultiplayer(selectedNode);
                         helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
                         nodeSelected = false;
