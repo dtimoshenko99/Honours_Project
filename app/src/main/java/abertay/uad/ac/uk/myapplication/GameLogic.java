@@ -118,7 +118,6 @@ public class GameLogic {
             if (gameInit.greenHighlightArray.length != 0) {
                 for (TransformableNode node : gameInit.greenHighlightArray) {
                     node.setEnabled(false);
-
                 }
             }
 

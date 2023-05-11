@@ -369,9 +369,6 @@ public class GameInit {
             piece.setOnTouchListener(onPieceTouchListener::onPieceTouch);
 
         }
-
-        // Set the world position of the piece anchor node
-//        pieceAnchorNode.setWorldPosition(new Vector3(x, y, z));
     }
 
 

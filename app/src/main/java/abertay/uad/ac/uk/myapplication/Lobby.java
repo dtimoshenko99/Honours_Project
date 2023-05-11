@@ -43,26 +43,6 @@ public class Lobby {
         this.hostUsername = hostUsername;
     }
 
-    public String getGuestUsername() {
-        return hostUsername;
-    }
-
-    public void setGuestUsername(String hostUsername) {
-        this.hostUsername = hostUsername;
-    }
-
-    public void setHostFcmToken(String hostFcmToken){ this.hostFcmToken = hostFcmToken;}
-
-    public String getHostFcmToken(){return hostFcmToken;}
-
-    public void setGuestFcmToken(String guestFcmToken){ this.guestFcmToken = guestFcmToken; }
-
-    public String getGuestFcmToken(){ return guestFcmToken; }
-
-    public int getCurrentPlayers() {
-        return currentPlayers;
-    }
-
     public void setCurrentPlayers(int currentPlayers) {
         this.currentPlayers = currentPlayers;
     }

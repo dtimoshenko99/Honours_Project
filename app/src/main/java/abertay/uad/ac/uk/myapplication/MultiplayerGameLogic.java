@@ -79,6 +79,7 @@ public class MultiplayerGameLogic {
 
         // Check and update the game state based on the turn
         checkAndUpdateInMultiplayer(isTurnValid, isInsideBoard, pickupRowAndCol, colAndRow);
+        Log.d("onTap", "pieceDroppedMultiplayer: IS OVER?: " + helperFunctions.isGameOver(gameInit.getBoardArray()));
     }
 
 
@@ -124,46 +125,38 @@ public class MultiplayerGameLogic {
                     node.setEnabled(false);
                 }
             }
-//             Check if there are captures and the last turn was a capture
-            if (gameLogic.hasCaptures(colAndRow[1], colAndRow[0], selectedNode) && gameLogic.lastTurnWasCapture) {
-                // Move the selected node to the destination square and update the board
-                gameLogic.updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0], colAndRow[1], colAndRow[0], gameLogic.middleCol, gameLogic.middleRow);
-                // Update arrays in the database
-                databaseManipulations.updateArrays(pickupRowAndCol, colAndRow, gameLogic.capturedAt, false, null, gameLogic.userHasCaptures);
+            gameLogic.userHasCaptures = false;
+
+            // Switch the turn and update selectable nodes
+            turnManager.switchTurn();
+            turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
+
+            // Update board array
+            gameLogic.updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0], colAndRow[1], colAndRow[0], gameLogic.middleCol, gameLogic.middleRow);
+
+            // Update database
+            databaseManipulations.updateArrays(pickupRowAndCol, colAndRow, gameLogic.capturedAt, true, turnManager.currentPlayer.getColor(), false);
+
+            // Set the variable controlling turn to false
+            gameLogic.captured = false;
+
+            // Clear an array holding positions of available captures
+            gameLogic.capturePositions.clear();
+            // Check if the game is over
+            if (helperFunctions.isGameOver(gameInit.getBoardArray())) {
+                databaseManipulations.notifyFinished();
+                Log.d("onTap", "HUI: END GAME + " + turnManager.currentPlayer);
+                Log.d("onTap", "HUI: END GAME + " + isHost);
+                Intent intent = new Intent(gameInit.getContext(), EndGameActivity.class);
+                String color = turnManager.getUserColor();
+                String winner = color.equals("red") ? "white" : "red";
+                intent.putExtra("winner", winner);
+                intent.putExtra("type", "multiplayer");
+                gameInit.getContext().startActivity(intent);
             } else {
-                gameLogic.userHasCaptures = false;
-
-                // Switch the turn and update selectable nodes
-                turnManager.switchTurn();
-                turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), isHost);
-
-                // Update board array
-                gameLogic.updateBoardStartArray(pickupRowAndCol[1], pickupRowAndCol[0], colAndRow[1], colAndRow[0], gameLogic.middleCol, gameLogic.middleRow);
-
-                // Update database
-                databaseManipulations.updateArrays(pickupRowAndCol, colAndRow, gameLogic.capturedAt, true, turnManager.currentPlayer.getColor(), false);
-
-                // Set the variable controlling turn to false
-                gameLogic.captured = false;
-
-                // Clear an array holding positions of available captures
-                gameLogic.capturePositions.clear();
-
-                // Check if the game is over
-                if (helperFunctions.isGameOver(gameInit.getBoardArray())) {
-                    databaseManipulations.turnChangeListener.remove();
-                    Context context = gameInit.getContext();
-                    Intent intent = new Intent(context, EndGameActivity.class);
-                    String color = turnManager.getUserColor();
-                    String winner = color.equals("red") ? "white" : "red";
-                    intent.putExtra("winner", winner);
-                    intent.putExtra("type", "multiplayer");
-                    context.startActivity(intent);
-                } else {
-                    // Check if the turn change listener is null and update the board listener
-                    if (databaseManipulations.turnChangeListener == null) {
-                        databaseManipulations.listenerToUpdateBoard();
-                    }
+                // Check if the turn change listener is null and update the board listener
+                if (databaseManipulations.turnChangeListener == null) {
+                    databaseManipulations.listenerToUpdateBoard();
                 }
 
             }
@@ -194,7 +187,6 @@ public class MultiplayerGameLogic {
                     case MotionEvent.ACTION_UP:
                         // Drop the piece when the touch is released and check if it is on top of the board
                         pieceDroppedMultiplayer(selectedNode);
-                        helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
                         nodeSelected = false;
                         break;
                 }

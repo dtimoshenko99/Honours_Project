@@ -102,7 +102,6 @@ public class GameDatabaseManipulations {
             updateFields.put("turn", switchTurnTo);
         }
 
-        Log.d("onTap", "checkAndUpdateInMultiplayer: Why is there a change in turn " + hasCaptures);
         updateFields.put("wasRow", wasRow);
         updateFields.put("wasCol", wasCol);
         updateFields.put("nowRow", nowRow);
@@ -143,26 +142,14 @@ public class GameDatabaseManipulations {
                         int capturedRow = snapshot.getLong("capturedRow").intValue();
                         int capturedCol = snapshot.getLong("capturedCol").intValue();
                         String turn = snapshot.getString("turn");
-//                            boolean hasCaptures = snapshot.getBoolean("hasCaptures");
-//                            // TODO: FIx this if have time
-//                            if(hasCaptures){
-//                                multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
-//                                        nowRow, nowCol, capturedRow, capturedCol);
-//                                multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
-//                                multiplayerGameLogic.helperFunctions.updateGameBoard(gameInit.getBoardArray(), gameInit.getNodesArray());
-//                                Log.d(TAG, "listenerToUpdateBoard: HAS CAPTURES, UPDATING BOARD, BUT NOT TURN");
-//                                if(!multiplayerGameLogic.gameLogic.hasCaptures(nowCol, nowRow, multiplayerGameLogic.selectedNode) && turn.equals(multiplayerGameLogic.turnManager.getUserColor())){
-//                                    Map<String, Object> isCaptures = new HashMap<>();
-//                                    isCaptures.put("hasCaptures", false);
-//                                    db.collection("collection").document(lobbyId).update(isCaptures);
-//                                }
-//                            }else{
-                        if (multiplayerGameLogic.helperFunctions.isGameOver(gameInit.getBoardArray())) {
+                        String state = snapshot.getString("state");
+                        if (state.equals("finished")) {
                             Intent intent = new Intent(gameInit.getContext(), EndGameActivity.class);
-                            intent.putExtra("winner", multiplayerGameLogic.turnManager.getUserColor());
+                            String winner = turn.equals("red") ? "white" : "red";
+                            intent.putExtra("winner", winner);
                             intent.putExtra("type", "multiplayer");
                             gameInit.getContext().startActivity(intent);
-                        } else if (wasCol != -1 && wasRow != -1 && turn.equals(multiplayerGameLogic.turnManager.getUserColor())) {
+                        } else if(wasCol != -1 && wasRow != -1 && turn.equals(multiplayerGameLogic.turnManager.getUserColor())) {
                             multiplayerGameLogic.helperFunctions.updateNodesArray(gameInit.getNodesArray(), wasRow, wasCol,
                                     nowRow, nowCol, capturedRow, capturedCol);
                             multiplayerGameLogic.helperFunctions.updateBoardArrayFromPositions(wasRow, wasCol, nowRow, nowCol, capturedRow, capturedCol, gameInit.getBoardArray());
@@ -171,11 +158,13 @@ public class GameDatabaseManipulations {
                             multiplayerGameLogic.turnManager.UpdateSelectableNodesMultiplayer(gameInit.getArFragment(), multiplayerGameLogic.isHost);
                             multiplayerGameLogic.gameLogic.checkForAvailableCapturesOnStartTurn();
                         }
-//                            }
-
                     } else {
                         Log.d(TAG, "Current data: null");
                     }
                 });
+    }
+
+    public void notifyFinished() {
+        db.collection("games").document(lobbyId).update("state", "finished");
     }
 }

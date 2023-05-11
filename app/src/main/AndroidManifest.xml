@@ -23,9 +23,6 @@
             android:name=".OpenGamesActivity"
             android:exported="false" />
         <activity
-            android:name=".FacebookUsername"
-            android:exported="false" />
-        <activity
             android:name=".MainMenuActivity"
             android:exported="false" />
         <activity
